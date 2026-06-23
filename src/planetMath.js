@@ -42,6 +42,37 @@ export const PLANET_DATA = {
 };
 
 
+export function calculateLST(date, lon) {
+    const J2000 = new Date(Date.UTC(2000, 0, 1, 11, 58, 55, 816));
+    const diffDays = (date - J2000) / (1000 * 60 * 60 * 24);
+    const GST = 280.46061837 + 360.98564736629 * diffDays;
+    let LST_deg = (GST + lon) % 360;
+    if (LST_deg < 0) LST_deg += 360;
+    return LST_deg;
+}
+
+export function convertRaDecToAltAz(RA_deg, decl_deg, lat_deg, LST_deg) {
+    const lat_rad = lat_deg * Math.PI / 180;
+    const decl_rad = decl_deg * Math.PI / 180;
+    
+    let HA_deg = LST_deg - RA_deg;
+    const HA_rad = HA_deg * Math.PI / 180;
+    
+    const sin_alt = Math.sin(lat_rad) * Math.sin(decl_rad) + Math.cos(lat_rad) * Math.cos(decl_rad) * Math.cos(HA_rad);
+    const alt_rad = Math.asin(sin_alt);
+    const alt_deg = alt_rad * 180 / Math.PI;
+    
+    const cos_az = (Math.sin(decl_rad) - Math.sin(lat_rad) * sin_alt) / (Math.cos(lat_rad) * Math.cos(alt_rad));
+    let az_rad = Math.acos(Math.max(-1, Math.min(1, cos_az))); // Clamp to [-1, 1] to avoid NaN
+    let az_deg = az_rad * 180 / Math.PI;
+    
+    if (Math.sin(HA_rad) > 0) {
+        az_deg = 360 - az_deg;
+    }
+    
+    return { altitude: alt_deg, azimuth: az_deg };
+}
+
 export function calculatePlanetPositions(date, lat = 0, lon = 0) {
     const J2000 = new Date(Date.UTC(2000, 0, 1, 11, 58, 55, 816));
     const JD_2000 = 2451545.0;
@@ -119,10 +150,7 @@ export function calculatePlanetPositions(date, lat = 0, lon = 0) {
     };
     
     // Calculate Local Sidereal Time (LST)
-    const GST = 280.46061837 + 360.98564736629 * diffDays;
-    let LST_deg = (GST + lon) % 360;
-    if (LST_deg < 0) LST_deg += 360;
-    const lat_rad = lat * Math.PI / 180;
+    const LST_deg = calculateLST(date, lon);
 
     for (const planet in results) {
         if (planet === 'Earth') continue;
@@ -152,23 +180,9 @@ export function calculatePlanetPositions(date, lat = 0, lon = 0) {
         results[planet].decl_deg = decl_deg;
 
         // Altitude and Azimuth calculations
-        let HA_deg = LST_deg - RA_deg;
-        const HA_rad = HA_deg * Math.PI / 180;
-        
-        const sin_alt = Math.sin(lat_rad) * Math.sin(decl) + Math.cos(lat_rad) * Math.cos(decl) * Math.cos(HA_rad);
-        const alt_rad = Math.asin(sin_alt);
-        const alt_deg = alt_rad * 180 / Math.PI;
-        
-        const cos_az = (Math.sin(decl) - Math.sin(lat_rad) * sin_alt) / (Math.cos(lat_rad) * Math.cos(alt_rad));
-        let az_rad = Math.acos(Math.max(-1, Math.min(1, cos_az))); // Clamp to [-1, 1] to avoid NaN
-        let az_deg = az_rad * 180 / Math.PI;
-        
-        if (Math.sin(HA_rad) > 0) {
-            az_deg = 360 - az_deg;
-        }
-        
-        results[planet].altitude = alt_deg;
-        results[planet].azimuth = az_deg;
+        const { altitude, azimuth } = convertRaDecToAltAz(RA_deg, decl_deg, lat, LST_deg);
+        results[planet].altitude = altitude;
+        results[planet].azimuth = azimuth;
     }
     
     // Calculate Sky Map coordinates

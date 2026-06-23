@@ -1,4 +1,14 @@
 {
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git"
+      ]
+    }
+  ],
   "hosting": {
     "public": "dist",
     "ignore": [
@@ -7,6 +17,14 @@
       "**/node_modules/**"
     ],
     "rewrites": [
+      {
+        "source": "/api/trmnl",
+        "function": "trmnl"
+      },
+      {
+        "source": "/api/sky.svg",
+        "function": "sky"
+      },
       {
         "source": "**",
         "destination": "/index.html"

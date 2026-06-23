@@ -1,6 +1,7 @@
-import React, { useRef, useEffect } from 'react';
+import React, { useRef, useEffect, useState, useMemo } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Stars, Text, useTexture, Billboard } from '@react-three/drei';
+import { calculateLST, convertRaDecToAltAz } from './planetMath';
 import './ThreeDView.css';
 
 const getImageSrc = (planet) => {
@@ -197,13 +198,185 @@ function GroundAndCompass({ radius = 50 }) {
   );
 }
 
-const LocalSkyView = ({ planetData, focusPlanets }) => {
+const CONSTELLATION_NAMES = {
+  And: "Andromeda", Ant: "Antlia", Aps: "Apus", Aqr: "Aquarius", Aql: "Aquila",
+  Ara: "Ara", Ari: "Aries", Aur: "Auriga", Boo: "Boötes", Cae: "Caelum",
+  Cam: "Camelopardalis", Cnc: "Cancer", CVn: "Canes Venatici", CMa: "Canis Major",
+  CMi: "Canis Minor", Cap: "Capricornus", Car: "Carina", Cas: "Cassiopeia",
+  Cen: "Centaurus", Cep: "Cepheus", Cet: "Cetus", Cha: "Chamaeleon", Cir: "Circinus",
+  Col: "Columba", Com: "Coma Berenices", CrA: "Corona Australis", CrB: "Corona Borealis",
+  Crv: "Corvus", Crt: "Crater", Cru: "Crux", Cyg: "Cygnus", Del: "Delphinus",
+  Dor: "Dorado", Dra: "Draco", Equ: "Equuleus", Eri: "Eridanus", For: "Fornax",
+  Gem: "Gemini", Gru: "Grus", Her: "Hercules", Hor: "Horologium", Hya: "Hydra",
+  Hyi: "Hydrus", Ind: "Indus", Lac: "Lacerta", Leo: "Leo", LMi: "Leo Minor",
+  Lep: "Lepus", Lib: "Libra", Lup: "Lupus", Lyn: "Lynx", Lyr: "Lyra",
+  Men: "Mensa", Mic: "Microscopium", Mon: "Monoceros", Mus: "Musca", Nor: "Norma",
+  Oct: "Octans", Oph: "Ophiuchus", Ori: "Orion", Pav: "Pavo", Peg: "Pegasus",
+  Per: "Perseus", Phe: "Phoenix", Pic: "Pictor", Psc: "Pisces", PsA: "Piscis Austrinus",
+  Pup: "Puppis", Pyx: "Pyxis", Ret: "Reticulum", Sge: "Sagitta", Sgr: "Sagittarius",
+  Sco: "Scorpius", Scl: "Sculptor", Sct: "Scutum", Ser: "Serpens", Sex: "Sextans",
+  Tau: "Taurus", Tel: "Telescopium", Tri: "Triangulum", TrA: "Triangulum Australe",
+  Tuc: "Tucana", UMa: "Ursa Major", UMi: "Ursa Minor", Vel: "Vela", Vir: "Virgo",
+  Vol: "Volans", Vul: "Vulpecula"
+};
+
+function ConstellationOverlay({ date, lat, lon, isDaytime }) {
+  const [starsData, setStarsData] = useState(null);
+  const [linesData, setLinesData] = useState(null);
+
+  useEffect(() => {
+    fetch('/data/stars.6.json').then(r => r.json()).then(setStarsData).catch(e => console.error("Error loading stars:", e));
+    fetch('/data/constellations.lines.json').then(r => r.json()).then(setLinesData).catch(e => console.error("Error loading lines:", e));
+  }, []);
+
+  const { starPoints, starColors, linePoints, labels } = useMemo(() => {
+    if (!starsData || !linesData || !date) return { starPoints: null, starColors: null, linePoints: null, labels: null };
+    
+    const latitude = parseFloat(lat) || 0;
+    const longitude = parseFloat(lon) || 0;
+    const LST_deg = calculateLST(date, longitude);
+    const radius = 50;
+    
+    const sPoints = [];
+    const colors = [];
+    
+    starsData.features.forEach(feature => {
+      const ra = feature.geometry.coordinates[0];
+      const dec = feature.geometry.coordinates[1];
+      const mag = feature.properties.mag;
+      
+      const { altitude, azimuth } = convertRaDecToAltAz(ra, dec, latitude, LST_deg);
+      if (altitude < -5) return; 
+      
+      const altRad = altitude * (Math.PI / 180);
+      const azRad = azimuth * (Math.PI / 180);
+      
+      const y = radius * Math.sin(altRad);
+      const r_xz = radius * Math.cos(altRad);
+      const x = r_xz * Math.sin(azRad);
+      const z = -r_xz * Math.cos(azRad);
+      
+      sPoints.push(x, y, z);
+      
+      const brightness = Math.max(0.1, 1 - (mag / 6));
+      colors.push(brightness, brightness, brightness);
+    });
+    
+    const lPoints = [];
+    const constelLabels = [];
+
+    linesData.features.forEach(feature => {
+      let sumX = 0, sumY = 0, sumZ = 0;
+      let pointCount = 0;
+      let anyAboveHorizon = false;
+
+      feature.geometry.coordinates.forEach(lineString => {
+         for (let i = 0; i < lineString.length - 1; i++) {
+           const [ra1, dec1] = lineString[i];
+           const [ra2, dec2] = lineString[i+1];
+           
+           const pos1 = convertRaDecToAltAz(ra1, dec1, latitude, LST_deg);
+           const pos2 = convertRaDecToAltAz(ra2, dec2, latitude, LST_deg);
+           
+           if (pos1.altitude >= -5 || pos2.altitude >= -5) {
+             anyAboveHorizon = true;
+           }
+           
+           if (pos1.altitude < -5 && pos2.altitude < -5) continue;
+           
+           const altRad1 = pos1.altitude * (Math.PI / 180);
+           const azRad1 = pos1.azimuth * (Math.PI / 180);
+           const y1 = radius * Math.sin(altRad1);
+           const r_xz1 = radius * Math.cos(altRad1);
+           const x1 = r_xz1 * Math.sin(azRad1);
+           const z1 = -r_xz1 * Math.cos(azRad1);
+           
+           const altRad2 = pos2.altitude * (Math.PI / 180);
+           const azRad2 = pos2.azimuth * (Math.PI / 180);
+           const y2 = radius * Math.sin(altRad2);
+           const r_xz2 = radius * Math.cos(altRad2);
+           const x2 = r_xz2 * Math.sin(azRad2);
+           const z2 = -r_xz2 * Math.cos(azRad2);
+           
+           lPoints.push(x1, y1, z1, x2, y2, z2);
+
+           sumX += x1 + x2;
+           sumY += y1 + y2;
+           sumZ += z1 + z2;
+           pointCount += 2;
+         }
+      });
+
+      if (anyAboveHorizon && pointCount > 0) {
+        let cx = sumX / pointCount;
+        let cy = sumY / pointCount;
+        let cz = sumZ / pointCount;
+        
+        const mag = Math.sqrt(cx*cx + cy*cy + cz*cz);
+        const labelRadius = 50; 
+        cx = (cx / mag) * labelRadius;
+        cy = (cy / mag) * labelRadius;
+        cz = (cz / mag) * labelRadius;
+        
+        const name = CONSTELLATION_NAMES[feature.id] || feature.id;
+        constelLabels.push({ id: feature.id, name, position: [cx, cy, cz] });
+      }
+    });
+    
+    return { 
+      starPoints: new Float32Array(sPoints), 
+      starColors: new Float32Array(colors),
+      linePoints: new Float32Array(lPoints),
+      labels: constelLabels
+    };
+  }, [starsData, linesData, date, lat, lon]);
+
+  if (!starPoints) return null;
+
+  return (
+    <group>
+      <points>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" count={starPoints.length / 3} array={starPoints} itemSize={3} />
+          <bufferAttribute attach="attributes-color" count={starColors.length / 3} array={starColors} itemSize={3} />
+        </bufferGeometry>
+        <pointsMaterial size={0.3} vertexColors={true} transparent opacity={0.8} />
+      </points>
+      <lineSegments>
+        <bufferGeometry>
+          <bufferAttribute attach="attributes-position" count={linePoints.length / 3} array={linePoints} itemSize={3} />
+        </bufferGeometry>
+        <lineBasicMaterial color={isDaytime ? "#ffffff" : "#ffffff"} transparent opacity={isDaytime ? 0.7 : 0.3} />
+      </lineSegments>
+      {labels && labels.map(lbl => (
+        <Billboard key={lbl.id} position={lbl.position}>
+          <Text
+            fontSize={1.2}
+            color={isDaytime ? "#000000" : "#aaddff"}
+            outlineWidth={isDaytime ? 0 : 0.15}
+            outlineColor="#000000"
+            fontWeight={isDaytime ? "bold" : "normal"}
+            anchorX="center"
+            anchorY="middle"
+            fillOpacity={isDaytime ? 1 : 0.8}
+          >
+            {lbl.name}
+          </Text>
+        </Billboard>
+      ))}
+    </group>
+  );
+}
+
+const LocalSkyView = ({ planetData, focusPlanets, latitude, longitude, date }) => {
+  const [showConstellations, setShowConstellations] = useState(false);
+  
   const planetsList = Object.keys(planetData).filter(p => p !== 'Earth');
   const sunData = planetData['Sun'];
   const isDaytime = sunData && sunData.altitude > 0;
 
   return (
-    <div className="threed-view-container" style={{ borderRadius: '12px', overflow: 'hidden', height: '600px', border: '1px solid rgba(255,255,255,0.1)' }}>
+    <div className="threed-view-container" style={{ borderRadius: '12px', overflow: 'hidden', height: '600px', border: '1px solid rgba(255,255,255,0.1)', position: 'relative' }}>
       {/* 
         Positioning the camera at a negative Y value (-0.05) makes it look UP towards the target [0,0,0].
         This pushes the horizon line lower on the screen by default to show more sky. 
@@ -213,8 +386,12 @@ const LocalSkyView = ({ planetData, focusPlanets }) => {
         <color attach="background" args={[isDaytime ? '#4fa3d1' : '#020408']} />
         
         {/* Starry Sky - only visible at night */}
-        {!isDaytime && (
+        {!isDaytime && !showConstellations && (
           <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
+        )}
+
+        {showConstellations && (
+          <ConstellationOverlay date={date} lat={latitude} lon={longitude} isDaytime={isDaytime} />
         )}
         
         {/* Lighting changes based on daytime */}
@@ -264,6 +441,19 @@ const LocalSkyView = ({ planetData, focusPlanets }) => {
       </Canvas>
       <div className="threed-overlay-text">
         <p>Use mouse to drag and look around. Scroll to zoom.</p>
+      </div>
+      
+      <div className="constellation-toggle" style={{ position: 'absolute', top: '10px', right: '10px', background: 'rgba(0,0,0,0.5)', padding: '10px', borderRadius: '8px', display: 'flex', alignItems: 'center', gap: '8px', zIndex: 10 }}>
+        <input 
+          type="checkbox" 
+          id="toggleConstellations" 
+          checked={showConstellations} 
+          onChange={(e) => setShowConstellations(e.target.checked)} 
+          style={{ cursor: 'pointer' }}
+        />
+        <label htmlFor="toggleConstellations" style={{ color: 'white', cursor: 'pointer', fontSize: '14px' }}>
+          Constellations
+        </label>
       </div>
     </div>
   );

@@ -16,7 +16,11 @@ const getImageSrc = (planet) => {
 };
 
 function App() {
-  const [date, setDate] = useState(new Date().toISOString().slice(0, 16));
+  const getLocalISOString = () => {
+    const tzoffset = (new Date()).getTimezoneOffset() * 60000;
+    return new Date(Date.now() - tzoffset).toISOString().slice(0, 16);
+  };
+  const [date, setDate] = useState(getLocalISOString());
   const [planetData, setPlanetData] = useState({});
   const [viewType, setViewType] = useState('Local-Horizon'); // 'Local-Horizon', '2D', '3D-SolarSystem', '3D-CelestialSphere'
   const [selectedEventId, setSelectedEventId] = useState("");
@@ -229,7 +233,7 @@ function App() {
         <SkyMap planetData={planetData} />
       ) : viewType === 'Local-Horizon' ? (
         <div className="view-container">
-          <LocalSkyView date={date} latitude={latitude} longitude={longitude} elevation={elevation} planetData={planetData} focusPlanets={selectedEventId ? UPCOMING_EVENTS.find(e => e.id === parseInt(selectedEventId, 10))?.planets : null} />
+          <LocalSkyView planetData={planetData} focusPlanets={selectedEventId ? UPCOMING_EVENTS.find(e => e.id === parseInt(selectedEventId, 10))?.planets : null} latitude={latitude} longitude={longitude} date={new Date(date)} />
         </div>
       ) : (
         <ThreeDView planetData={planetData} viewType={viewType} />
