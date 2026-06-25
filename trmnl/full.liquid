@@ -17,16 +17,19 @@
                 <thead>
                   <tr>
                     <td style="width: 22px; border: none;"></td>
-                    <th colspan="2" class="text--base text--bold text--black" style="text-align: center; border: none; padding-bottom: 8px;">ALTITUDE</th>
+                    <th colspan="2" class="text--base text--bold text--black" style="text-align: center; border: none; padding-bottom: 8px;">POSITION</th>
                   </tr>
                 </thead>
                 <tbody>
                   {% for planet in planets %}
                     {% if planet.visible %}
-                      <tr class="border--bottom" style="height: 32px;">
-                        <td style="width: 22px; border: none;"></td>
-                        <td class="text--center text--base text--bold text--black" style="text-align: center; border: none; vertical-align: middle;">{{ planet.name }}</td>
-                        <td class="text--right text--base text--bold text--black" style="width: 45px; text-align: right; border: none; vertical-align: middle;">{{ planet.altitude_formatted }}</td>
+                      <tr class="border--bottom" style="height: 42px;">
+                        <td style="width: 12px; border: none;"></td>
+                        <td class="text--left text--base text--bold text--black" style="text-align: left; border: none; vertical-align: middle;">{{ planet.name }}</td>
+                        <td class="text--right text--xsmall text--bold text--black" style="width: 60px; text-align: right; border: none; vertical-align: middle; line-height: 1.2;">
+                          {{ planet.altitude_formatted }}<br/>
+                          <span style="font-size: 10px; color: #808080; font-weight: normal;">{{ planet.azimuth_formatted }}</span>
+                        </td>
                       </tr>
                     {% endif %}
                   {% endfor %}

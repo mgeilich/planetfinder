@@ -31,11 +31,11 @@
           {% endif %}
         </div>
         <div class="flex flex--col gap--1 w--[260px] lg:w--[260px]">
-          <span class="text--xsmall label text--bold text--black">ALTITUDE</span>
-          <div class="flex flex--row flex--wrap gap--2">
+          <span class="text--xsmall label text--bold text--black">POSITION</span>
+          <div class="flex flex--row flex--wrap gap--x-3 gap--y-1">
             {% for planet in planets %}
               {% if planet.visible %}
-                <span class="text--xsmall">{{ planet.name }}: <strong>{{ planet.altitude_formatted }}</strong></span>
+                <span class="text--xsmall">{{ planet.name }}: <strong>{{ planet.altitude_formatted }} <span style="font-size: 10px; color: #808080; font-weight: normal;">({{ planet.azimuth_formatted }})</span></strong></span>
               {% endif %}
             {% endfor %}
           </div>
