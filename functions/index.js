@@ -186,9 +186,9 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
     // Setup SVG dimensions (680x480, centered at 340, 240)
     const width = 680;
     const height = 480;
-    const cx = 270; // Centered at 270 to match the visible 540px area of the 680x480 SVG (right 140px covered by TRMNL altitude panel)
-    const cy = 240;
-    const r = 225; // Coordinate space radius (increased to 225 to make the map larger)
+    const cx = 390; // Shifted dome center X to 390 (twice as much to the right)
+    const cy = 320; // Shifted center down to 320 to allow a larger dome radius
+    const r = 290; // Coordinate space radius (increased by 29% to 290 for a much larger map)
 
     // Rotation angles for 3D perspective
     const alpha = -30 * (Math.PI / 180); // Yaw
@@ -211,7 +211,7 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
     svg += `    .sun-body { fill: none; stroke: black; stroke-width: 2.0; }\n`;
     svg += `    .projection-line { stroke: black; stroke-width: 1.2; stroke-dasharray: 2,3; fill: none; }\n`;
     svg += `    .label { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 30px; fill: black; font-weight: bold; }\n`;
-    svg += `    .cardinal { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 36px; fill: black; font-weight: 800; }\n`;
+    svg += `    .cardinal { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 30px; fill: #a0a0a0; font-weight: 300; }\n`;
     svg += `    .sky-bg { fill: white; }\n`;
     svg += `  </style>\n`;
 
