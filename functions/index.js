@@ -115,6 +115,7 @@ export const trmnl = onRequest({ cors: true, invoker: "public" }, (req, res) => 
           azimuth: Math.round(data.azimuth * 10) / 10,
           altitude_formatted: `${data.altitude >= 0 ? "+" : ""}${Math.round(data.altitude * 10) / 10}°`,
           azimuth_formatted: `${Math.round(data.azimuth)}° ${getCompassDirection(data.azimuth)}`,
+          compass_direction: getCompassDirection(data.azimuth),
           visible: data.altitude >= 0
         };
       });
