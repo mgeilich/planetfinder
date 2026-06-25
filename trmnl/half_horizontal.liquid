@@ -2,14 +2,14 @@
   <div class="flex flex--row w--full h--full">
     <!-- Panel 1: Sky Map (240px wide) -->
     <div class="flex flex--col justify--center items--center w--[240px] h--[240px] lg:w--[240px]">
-      <img src="https://planetfinder-web-2605.web.app/api/sky.svg?lat={{ latitude }}&lon={{ longitude }}&v=118" 
+      <img src="https://planetfinder-web-2605.web.app/api/sky.svg?lat={{ latitude }}&lon={{ longitude }}&v=119" 
            class="image image-dither w--[240px] h--[240px] lg:w--[240px] lg:h--[240px]" />
     </div>
     <!-- Panel 2: Moon Phase & Altitude (560px wide) -->
     <div class="flex flex--col justify--start gap--2 w--[560px] h--[240px] pt--2 pb--2 pl--3 pr--3 border--left lg:pl--3">
       <div class="flex flex--row justify--between items--center w--full">
         <div class="flex flex--col gap--1">
-          <span class="text--xsmall label text--bold text--black">LOCAL TIME & COORDINATES</span>
+          <span class="text--xsmall label text--bold text--black" style="font-weight: 900;">LOCAL TIME & COORDINATES</span>
           <span class="text--small text--bold">{{ last_updated }} ({{ latitude }}, {{ longitude }})</span>
         </div>
         <div class="flex flex--row items--center gap--2">
@@ -22,7 +22,7 @@
       </div>
       <div class="flex flex--row justify--between items--start w--full mt--1">
         <div class="flex flex--col gap--1 w--[260px] lg:w--[260px]">
-          <span class="text--xsmall label text--bold text--black">UPCOMING EVENT</span>
+          <span class="text--xsmall label text--bold text--black" style="font-weight: 900;">UPCOMING EVENT</span>
           {% if next_event.title %}
             <span class="text--xsmall text--bold">{{ next_event.title }}</span>
             <span class="text--xsmall label text--black">{{ next_event.date_formatted }}</span>
@@ -31,7 +31,7 @@
           {% endif %}
         </div>
         <div class="flex flex--col gap--1 w--[260px] lg:w--[260px]">
-          <span class="text--xsmall label text--bold text--black">ALTITUDE/HEADING</span>
+          <span class="text--xsmall label text--bold text--black" style="font-weight: 900;">ALTITUDE/HEADING</span>
           <div class="flex flex--row flex--wrap gap--x-3 gap--y-1">
             {% for planet in planets %}
               {% if planet.visible %}

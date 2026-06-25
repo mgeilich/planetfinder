@@ -2,7 +2,7 @@
   <div class="flex flex--row portrait:flex--col w--full h--full">
     <!-- Panel 1: Sky Map (680px wide, overlaps into altitude column) -->
     <div class="flex flex--col justify--center w--[680px] h--[480px] portrait:w--full portrait:h--[240px]" style="margin-right: -140px;">
-      <img src="https://planetfinder-web-2605.web.app/api/sky.svg?lat={{ latitude }}&lon={{ longitude }}&v=118" 
+      <img src="https://planetfinder-web-2605.web.app/api/sky.svg?lat={{ latitude }}&lon={{ longitude }}&v=119" 
            class="image image-dither w--[680px] h--[480px] portrait:w--[240px] portrait:h--[240px]"
            style="display: block;" />
     </div>
@@ -16,7 +16,7 @@
               <table style="margin-left: auto; margin-right: 0; border-collapse: collapse; width: auto;">
                 <thead>
                   <tr>
-                    <th colspan="2" class="text--base text--bold text--black" style="text-align: center; border: none; padding-bottom: 8px;">ALTITUDE/HEADING</th>
+                    <th colspan="2" class="text--base text--bold text--black" style="text-align: center; border: none; padding-bottom: 8px; font-weight: 900;">ALTITUDE/HEADING</th>
                   </tr>
                 </thead>
                 <tbody>
@@ -60,7 +60,7 @@
                   </div>
                 </div>
                 <div class="bg--white rounded border flex flex--col gap--1 w--full pt--1 pb--1 pl--2 pr--2">
-                  <span class="text--xxsmall label text--bold text--black">MOON PHASE</span>
+                  <span class="text--xxsmall label text--bold text--black" style="font-weight: 900;">MOON PHASE</span>
                   <div class="flex flex--row items--center gap--2 mt--1">
                     <span class="value--large">{{ moon_phase_emoji }}</span>
                     <div class="flex flex--col justify--center">
@@ -70,7 +70,7 @@
                   </div>
                 </div>
                 <div class="bg--white rounded border flex flex--col gap--1 w--full pt--1 pb--1 pl--2 pr--2">
-                  <span class="text--xxsmall label text--bold text--black">UPCOMING EVENT</span>
+                  <span class="text--xxsmall label text--bold text--black" style="font-weight: 900;">UPCOMING EVENT</span>
                   {% if next_event.title %}
                     <div class="flex flex--col gap--0">
                       <span class="text--xxsmall text--bold text--black">{{ next_event.title }}</span>
