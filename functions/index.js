@@ -188,7 +188,7 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
     const height = 480;
     const cx = 390; // Shifted dome center X to 390 (twice as much to the right)
     const cy = 320; // Shifted center down to 320 to allow a larger dome radius
-    const r = 260; // Coordinate space radius (reduced by 10% from 290 to 260)
+    const r = 246; // Coordinate space radius (reduced by 15% from 290 to 246)
 
     // Rotation angles for 3D perspective
     const alpha = -30 * (Math.PI / 180); // Yaw
