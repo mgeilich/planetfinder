@@ -188,7 +188,7 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
     const height = 480;
     const cx = 340;
     const cy = 240;
-    const r = 175; // Coordinate space radius
+    const r = 215; // Coordinate space radius (increased from 175 for larger display)
 
     // Rotation angles for 3D perspective
     const alpha = -30 * (Math.PI / 180); // Yaw
@@ -203,15 +203,15 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
     
     // Background style (pure white for E-Ink, black/gray drawing lines)
     svg += `  <style>\n`;
-    svg += `    .horizon { stroke: black; stroke-width: 1.5; fill: none; }\n`;
-    svg += `    .grid-line { stroke: #d0d0d0; stroke-width: 0.5; stroke-dasharray: 2,4; fill: none; }\n`;
-    svg += `    .constellation-line { stroke: #c0c0c0; stroke-width: 0.8; stroke-dasharray: 2,2; fill: none; }\n`;
+    svg += `    .horizon { stroke: black; stroke-width: 2.0; fill: none; }\n`;
+    svg += `    .grid-line { stroke: #a0a0a0; stroke-width: 1.0; stroke-dasharray: 2,4; fill: none; }\n`;
+    svg += `    .constellation-line { stroke: #b0b0b0; stroke-width: 1.0; stroke-dasharray: 2,2; fill: none; }\n`;
     svg += `    .star { fill: black; stroke: none; }\n`;
-    svg += `    .planet { fill: black; stroke: black; stroke-width: 1; }\n`;
-    svg += `    .sun-body { fill: none; stroke: black; stroke-width: 1.5; }\n`;
-    svg += `    .projection-line { stroke: #808080; stroke-width: 0.8; stroke-dasharray: 2,3; fill: none; }\n`;
-    svg += `    .label { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 16px; fill: black; font-weight: bold; }\n`;
-    svg += `    .cardinal { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 26px; fill: black; font-weight: 800; }\n`;
+    svg += `    .planet { fill: black; stroke: black; stroke-width: 1.5; }\n`;
+    svg += `    .sun-body { fill: none; stroke: black; stroke-width: 2.0; }\n`;
+    svg += `    .projection-line { stroke: black; stroke-width: 1.2; stroke-dasharray: 2,3; fill: none; }\n`;
+    svg += `    .label { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 18px; fill: black; font-weight: bold; }\n`;
+    svg += `    .cardinal { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 30px; fill: black; font-weight: 800; }\n`;
     svg += `    .sky-bg { fill: white; }\n`;
     svg += `  </style>\n`;
 
@@ -325,7 +325,7 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
             const pos = convertRaDecToAltAz(ra, dec, lat, LST_deg);
             if (pos.altitude >= 0) {
               const pt = project(pos.altitude, pos.azimuth);
-              const starRadius = Math.max(0.5, 2.5 - 0.5 * mag);
+              const starRadius = Math.max(0.8, 3.5 - 0.7 * mag);
               svg += `  <circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="${starRadius.toFixed(1)}" class="star" />\n`;
             }
           }
@@ -346,7 +346,7 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
         const data = planetPositions[name];
         if (data.altitude >= 0) {
           const pt = project(data.altitude, data.azimuth);
-          const rSize = name === "Sun" ? 8 : 4;
+          const rSize = name === "Sun" ? 12 : 6;
           obstacles.push({
             x1: pt.x - rSize,
             y1: pt.y - rSize,
@@ -381,29 +381,29 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
 
           if (name === "Sun") {
             svg += `  <g>\n`;
-            svg += `    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="6" class="sun-body" />\n`;
-            svg += `    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="1.5" fill="black" />\n`;
+            svg += `    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="8" class="sun-body" />\n`;
+            svg += `    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="2" fill="black" />\n`;
           } else {
             svg += `  <g>\n`;
-            svg += `    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="3" class="planet" />\n`;
+            svg += `    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="4.5" class="planet" />\n`;
           }
 
           // Determine label position with altitude info included
           const labelText = `${name} (${data.altitude >= 0 ? "+" : ""}${Math.round(data.altitude)}°)`;
-          const labelWidth = labelText.length * 9.5;
-          const labelHeight = 18;
+          const labelWidth = labelText.length * 10.5;
+          const labelHeight = 22;
           let lx = px;
-          let ly = py - 9;
+          let ly = py - 11;
           let anchor = "middle";
           let found = false;
           let finalBox = null;
 
           // Try 4 directions: Top, Bottom, Right, Left
           const candidates = [
-            { lx: px, ly: py - 9, anchor: "middle", box: { x1: px - labelWidth/2, y1: py - 9 - labelHeight, x2: px + labelWidth/2, y2: py - 9 } },
-            { lx: px, ly: py + 15, anchor: "middle", box: { x1: px - labelWidth/2, y1: py + 15, x2: px + labelWidth/2, y2: py + 15 + labelHeight } },
-            { lx: px + 10, ly: py + 4, anchor: "start", box: { x1: px + 10, y1: py + 4 - labelHeight/2, x2: px + 10 + labelWidth, y2: py + 4 + labelHeight/2 } },
-            { lx: px - 10, ly: py + 4, anchor: "end", box: { x1: px - 10 - labelWidth, y1: py + 4 - labelHeight/2, x2: px - 10, y2: py + 4 + labelHeight/2 } }
+            { lx: px, ly: py - 11, anchor: "middle", box: { x1: px - labelWidth/2, y1: py - 11 - labelHeight, x2: px + labelWidth/2, y2: py - 11 } },
+            { lx: px, ly: py + 18, anchor: "middle", box: { x1: px - labelWidth/2, y1: py + 18, x2: px + labelWidth/2, y2: py + 18 + labelHeight } },
+            { lx: px + 12, ly: py + 4, anchor: "start", box: { x1: px + 12, y1: py + 4 - labelHeight/2, x2: px + 12 + labelWidth, y2: py + 4 + labelHeight/2 } },
+            { lx: px - 12, ly: py + 4, anchor: "end", box: { x1: px - 12 - labelWidth, y1: py + 4 - labelHeight/2, x2: px - 12, y2: py + 4 + labelHeight/2 } }
           ];
 
           for (const cand of candidates) {
