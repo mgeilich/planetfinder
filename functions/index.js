@@ -186,9 +186,9 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
     // Setup SVG dimensions (680x480, centered at 340, 240)
     const width = 680;
     const height = 480;
-    const cx = 340;
+    const cx = 270; // Centered at 270 to match the visible 540px area of the 680x480 SVG (right 140px covered by TRMNL altitude panel)
     const cy = 240;
-    const r = 215; // Coordinate space radius (increased from 175 for larger display)
+    const r = 225; // Coordinate space radius (increased to 225 to make the map larger)
 
     // Rotation angles for 3D perspective
     const alpha = -30 * (Math.PI / 180); // Yaw
@@ -207,11 +207,11 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
     svg += `    .grid-line { stroke: #a0a0a0; stroke-width: 1.0; stroke-dasharray: 2,4; fill: none; }\n`;
     svg += `    .constellation-line { stroke: #b0b0b0; stroke-width: 1.0; stroke-dasharray: 2,2; fill: none; }\n`;
     svg += `    .star { fill: black; stroke: none; }\n`;
-    svg += `    .planet { fill: black; stroke: black; stroke-width: 1.5; }\n`;
+    svg += `    .planet { fill: black; stroke: white; stroke-width: 2.0; }\n`;
     svg += `    .sun-body { fill: none; stroke: black; stroke-width: 2.0; }\n`;
     svg += `    .projection-line { stroke: black; stroke-width: 1.2; stroke-dasharray: 2,3; fill: none; }\n`;
-    svg += `    .label { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 18px; fill: black; font-weight: bold; }\n`;
-    svg += `    .cardinal { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 30px; fill: black; font-weight: 800; }\n`;
+    svg += `    .label { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 30px; fill: black; font-weight: bold; }\n`;
+    svg += `    .cardinal { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 36px; fill: black; font-weight: 800; }\n`;
     svg += `    .sky-bg { fill: white; }\n`;
     svg += `  </style>\n`;
 
@@ -346,7 +346,7 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
         const data = planetPositions[name];
         if (data.altitude >= 0) {
           const pt = project(data.altitude, data.azimuth);
-          const rSize = name === "Sun" ? 12 : 6;
+          const rSize = name === "Sun" ? 22 : 14;
           obstacles.push({
             x1: pt.x - rSize,
             y1: pt.y - rSize,
@@ -381,29 +381,29 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
 
           if (name === "Sun") {
             svg += `  <g>\n`;
-            svg += `    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="8" class="sun-body" />\n`;
-            svg += `    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="2" fill="black" />\n`;
+            svg += `    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="16" class="sun-body" />\n`;
+            svg += `    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="4" fill="black" />\n`;
           } else {
             svg += `  <g>\n`;
-            svg += `    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="4.5" class="planet" />\n`;
+            svg += `    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="10" class="planet" />\n`;
           }
 
-          // Determine label position with altitude info included
-          const labelText = `${name} (${data.altitude >= 0 ? "+" : ""}${Math.round(data.altitude)}°)`;
-          const labelWidth = labelText.length * 10.5;
-          const labelHeight = 22;
+          // Determine label position without altitude (makes it cleaner)
+          const labelText = name;
+          const labelWidth = labelText.length * 18.0;
+          const labelHeight = 36;
           let lx = px;
-          let ly = py - 11;
+          let ly = py - 18;
           let anchor = "middle";
           let found = false;
           let finalBox = null;
 
           // Try 4 directions: Top, Bottom, Right, Left
           const candidates = [
-            { lx: px, ly: py - 11, anchor: "middle", box: { x1: px - labelWidth/2, y1: py - 11 - labelHeight, x2: px + labelWidth/2, y2: py - 11 } },
-            { lx: px, ly: py + 18, anchor: "middle", box: { x1: px - labelWidth/2, y1: py + 18, x2: px + labelWidth/2, y2: py + 18 + labelHeight } },
-            { lx: px + 12, ly: py + 4, anchor: "start", box: { x1: px + 12, y1: py + 4 - labelHeight/2, x2: px + 12 + labelWidth, y2: py + 4 + labelHeight/2 } },
-            { lx: px - 12, ly: py + 4, anchor: "end", box: { x1: px - 12 - labelWidth, y1: py + 4 - labelHeight/2, x2: px - 12, y2: py + 4 + labelHeight/2 } }
+            { lx: px, ly: py - 18, anchor: "middle", box: { x1: px - labelWidth/2, y1: py - 18 - labelHeight, x2: px + labelWidth/2, y2: py - 18 } },
+            { lx: px, ly: py + 26, anchor: "middle", box: { x1: px - labelWidth/2, y1: py + 26, x2: px + labelWidth/2, y2: py + 26 + labelHeight } },
+            { lx: px + 18, ly: py + 4, anchor: "start", box: { x1: px + 18, y1: py + 4 - labelHeight/2, x2: px + 18 + labelWidth, y2: py + 4 + labelHeight/2 } },
+            { lx: px - 18, ly: py + 4, anchor: "end", box: { x1: px - 18 - labelWidth, y1: py + 4 - labelHeight/2, x2: px - 18, y2: py + 4 + labelHeight/2 } }
           ];
 
           for (const cand of candidates) {
@@ -450,7 +450,7 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
             const by1 = finalBox.y1 - padY;
             const bw = (finalBox.x2 - finalBox.x1) + padX * 2;
             const bh = (finalBox.y2 - finalBox.y1) + padY * 2;
-            svg += `    <rect x="${bx1.toFixed(1)}" y="${by1.toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" fill="white" opacity="0.9" rx="3" ry="3" />\n`;
+            svg += `    <rect x="${bx1.toFixed(1)}" y="${by1.toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" fill="white" opacity="1.0" rx="4" ry="4" />\n`;
           }
 
           svg += `    <text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" class="label" text-anchor="${anchor}">${labelText}</text>\n`;
