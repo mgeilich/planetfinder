@@ -183,13 +183,14 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
     const LST_deg = calculateLST(date, lon);
     const planetPositions = calculatePlanetPositions(date, lat, lon);
 
-    // Setup SVG dimensions (centered at 200, 200 with radius 160)
-    const size = 400;
-    const cx = 200;
-    const cy = 200;
-    const r = 160;
+    // Setup SVG dimensions (680x480, circular planisphere centered at 340, 240)
+    const width = 680;
+    const height = 480;
+    const cx = 340;
+    const cy = 240;
+    const r = 235;
 
-    let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${size} ${size}" width="100%" height="100%">\n`;
+    let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="100%" height="100%">\n`;
     
     // Background style (pure white for E-Ink, black/gray drawing lines)
     svg += `  <style>\n`;
@@ -199,10 +200,7 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
     svg += `    .star { fill: black; stroke: none; }\n`;
     svg += `    .planet { fill: black; stroke: black; stroke-width: 1; }\n`;
     svg += `    .sun-body { fill: none; stroke: black; stroke-width: 1.5; }\n`;
-    svg += `    .label { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 10px; fill: black; font-weight: bold; }\n`;
-    svg += `    .cardinal { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 12px; fill: black; font-weight: 800; }\n`;
-    svg += `    .sky-bg { fill: white; }\n`;
-    svg += `  </style>\n`;
+    svg += `    .label { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 20px; fill: black; font-weight: bold; }\n    .cardinal { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 30px; fill: black; font-weight: 800; }\n    .sky-bg { fill: white; }\n  </style>\n`;
 
     // Outer sky vault canvas background
     svg += `  <circle cx="${cx}" cy="${cy}" r="${r}" class="sky-bg" />\n`;
@@ -283,12 +281,7 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
 
     // 4. Draw Planets & Sun with label collision avoidance
     svg += `  <!-- Sun & Planets -->\n`;
-    const obstacles = [
-      { x1: 190, y1: 15, x2: 210, y2: 35 },  // North
-      { x1: 355, y1: 190, x2: 385, y2: 215 }, // East
-      { x1: 190, y1: 360, x2: 210, y2: 390 }, // South
-      { x1: 15, y1: 190, x2: 45, y2: 215 }   // West
-    ];
+    const obstacles = [];
 
     // Add all planet dots as obstacles so labels don't cover them
     Object.keys(planetPositions)
@@ -334,19 +327,20 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
           }
 
           // Determine label position
-          const labelWidth = name.length * 6.5;
-          const labelHeight = 10;
+          const labelWidth = name.length * 12.0;
+          const labelHeight = 20;
           let lx = px;
-          let ly = py - 8;
+          let ly = py - 9;
           let anchor = "middle";
           let found = false;
+          let finalBox = null;
 
           // Try 4 directions: Top, Bottom, Right, Left
           const candidates = [
-            { lx: px, ly: py - 8, anchor: "middle", box: { x1: px - labelWidth/2, y1: py - 8 - labelHeight, x2: px + labelWidth/2, y2: py - 8 } },
-            { lx: px, ly: py + 12, anchor: "middle", box: { x1: px - labelWidth/2, y1: py + 12, x2: px + labelWidth/2, y2: py + 12 + labelHeight } },
-            { lx: px + 8, ly: py + 3, anchor: "start", box: { x1: px + 8, y1: py + 3 - labelHeight/2, x2: px + 8 + labelWidth, y2: py + 3 + labelHeight/2 } },
-            { lx: px - 8, ly: py + 3, anchor: "end", box: { x1: px - 8 - labelWidth, y1: py + 3 - labelHeight/2, x2: px - 8, y2: py + 3 + labelHeight/2 } }
+            { lx: px, ly: py - 9, anchor: "middle", box: { x1: px - labelWidth/2, y1: py - 9 - labelHeight, x2: px + labelWidth/2, y2: py - 9 } },
+            { lx: px, ly: py + 15, anchor: "middle", box: { x1: px - labelWidth/2, y1: py + 15, x2: px + labelWidth/2, y2: py + 15 + labelHeight } },
+            { lx: px + 10, ly: py + 4, anchor: "start", box: { x1: px + 10, y1: py + 4 - labelHeight/2, x2: px + 10 + labelWidth, y2: py + 4 + labelHeight/2 } },
+            { lx: px - 10, ly: py + 4, anchor: "end", box: { x1: px - 10 - labelWidth, y1: py + 4 - labelHeight/2, x2: px - 10, y2: py + 4 + labelHeight/2 } }
           ];
 
           for (const cand of candidates) {
@@ -355,6 +349,7 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
               ly = cand.ly;
               anchor = cand.anchor;
               obstacles.push(cand.box);
+              finalBox = cand.box;
               found = true;
               break;
             }
@@ -362,7 +357,7 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
 
           // Fallback: stack vertically if all directions are blocked
           if (!found) {
-            let offset = 8;
+            let offset = 9;
             while (true) {
               const testBox = { x1: px - labelWidth/2, y1: py - offset - labelHeight, x2: px + labelWidth/2, y2: py - offset };
               if (!checkOverlap(testBox)) {
@@ -370,16 +365,29 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
                 ly = py - offset;
                 anchor = "middle";
                 obstacles.push(testBox);
+                finalBox = testBox;
                 break;
               }
-              offset += 10;
-              if (offset > 100) { // Safety limit
+              offset += 12;
+              if (offset > 120) { // Safety limit
                 lx = px;
-                ly = py - 8;
+                ly = py - 9;
                 anchor = "middle";
+                finalBox = candidates[0].box;
                 break;
               }
             }
+          }
+
+          // Render a clean background rect for legibility on E-Ink / map lines
+          if (finalBox) {
+            const padX = 2;
+            const padY = 1;
+            const bx1 = finalBox.x1 - padX;
+            const by1 = finalBox.y1 - padY;
+            const bw = (finalBox.x2 - finalBox.x1) + padX * 2;
+            const bh = (finalBox.y2 - finalBox.y1) + padY * 2;
+            svg += `    <rect x="${bx1.toFixed(1)}" y="${by1.toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" fill="white" opacity="0.9" rx="3" ry="3" />\n`;
           }
 
           svg += `    <text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" class="label" text-anchor="${anchor}">${name}</text>\n`;
@@ -389,10 +397,10 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
 
     // 5. Draw Cardinal Direction Markers
     svg += `  <!-- Cardinal Directions -->\n`;
-    svg += `  <text x="${cx}" y="${cy - r - 6}" class="cardinal" text-anchor="middle">N</text>\n`;
-    svg += `  <text x="${cx + r + 6}" y="${cy + 4}" class="cardinal" text-anchor="start">E</text>\n`;
-    svg += `  <text x="${cx}" y="${cy + r + 15}" class="cardinal" text-anchor="middle">S</text>\n`;
-    svg += `  <text x="${cx - r - 15}" y="${cy + 4}" class="cardinal" text-anchor="start">W</text>\n`;
+    svg += `  <text x="${cx.toFixed(1)}" y="${(cy - r - 8).toFixed(1)}" class="cardinal" text-anchor="middle">N</text>\n`;
+    svg += `  <text x="${(cx + r + 16).toFixed(1)}" y="${(cy + 10).toFixed(1)}" class="cardinal" text-anchor="middle">E</text>\n`;
+    svg += `  <text x="${cx.toFixed(1)}" y="${(cy + r + 20).toFixed(1)}" class="cardinal" text-anchor="middle">S</text>\n`;
+    svg += `  <text x="${(cx - r - 16).toFixed(1)}" y="${(cy + 10).toFixed(1)}" class="cardinal" text-anchor="middle">W</text>\n`;
 
     svg += `</svg>`;
 
