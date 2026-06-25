@@ -2,7 +2,7 @@
   <div class="flex flex--row w--full h--full">
     <!-- Panel 1: Sky Map (240px wide) -->
     <div class="flex flex--col justify--center items--center w--[240px] h--[240px] lg:w--[240px]">
-      <img src="https://planetfinder-web-2605.web.app/api/sky.svg?lat={{ latitude }}&lon={{ longitude }}&v=119" 
+      <img src="https://planetfinder-web-2605.web.app/api/sky.svg?lat={{ latitude }}&lon={{ longitude }}&v=120" 
            class="image image-dither w--[240px] h--[240px] lg:w--[240px] lg:h--[240px]" />
     </div>
     <!-- Panel 2: Moon Phase & Altitude (560px wide) -->
@@ -35,7 +35,7 @@
           <div class="flex flex--row flex--wrap gap--x-3 gap--y-1">
             {% for planet in planets %}
               {% if planet.visible %}
-                <span class="text--xsmall">{{ planet.name }}: <strong>{{ planet.altitude_formatted }} <span style="font-size: 10px; color: #808080; font-weight: normal;">{{ planet.compass_direction }}</span></strong></span>
+                <span class="text--xsmall">{{ planet.name }}: <strong>{{ planet.altitude_formatted }} <span style="font-size: 10px; color: #000000; font-weight: bold;">{{ planet.compass_direction }}</span></strong></span>
               {% endif %}
             {% endfor %}
           </div>

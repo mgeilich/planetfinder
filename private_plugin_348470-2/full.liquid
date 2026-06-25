@@ -2,7 +2,7 @@
   <div class="flex flex--row portrait:flex--col w--full h--full">
     <!-- Panel 1: Sky Map (680px wide, overlaps into altitude column) -->
     <div class="flex flex--col justify--center w--[680px] h--[480px] portrait:w--full portrait:h--[240px]" style="margin-right: -140px;">
-      <img src="https://planetfinder-web-2605.web.app/api/sky.svg?lat={{ latitude }}&lon={{ longitude }}&v=119" 
+      <img src="https://planetfinder-web-2605.web.app/api/sky.svg?lat={{ latitude }}&lon={{ longitude }}&v=120" 
            class="image image-dither w--[680px] h--[480px] portrait:w--[240px] portrait:h--[240px]"
            style="display: block;" />
     </div>
@@ -25,7 +25,7 @@
                       <tr class="border--bottom" style="height: 32px;">
                         <td class="text--left text--base text--bold text--black" style="text-align: left; border: none; vertical-align: middle; padding-right: 15px;">{{ planet.name }}</td>
                         <td class="text--right text--base text--bold text--black" style="text-align: right; border: none; vertical-align: middle; white-space: nowrap;">
-                          {{ planet.altitude_formatted }} <span style="font-size: 11px; color: #808080; font-weight: normal;">{{ planet.compass_direction }}</span>
+                          {{ planet.altitude_formatted }} <span style="font-size: 11px; color: #000000; font-weight: bold;">{{ planet.compass_direction }}</span>
                         </td>
                       </tr>
                     {% endif %}
