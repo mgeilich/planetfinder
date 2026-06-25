@@ -347,7 +347,7 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
         const data = planetPositions[name];
         if (data.altitude >= 0) {
           const pt = project(data.altitude, data.azimuth);
-          const rSize = name === "Sun" ? 22 : 14;
+          const rSize = name === "Sun" ? 22 : (name === "Moon" ? 18 : 14);
           obstacles.push({
             x1: pt.x - rSize,
             y1: pt.y - rSize,
@@ -384,6 +384,9 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
             svg += `  <g>\n`;
             svg += `    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="16" class="sun-body" />\n`;
             svg += `    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="4" fill="black" />\n`;
+          } else if (name === "Moon") {
+            svg += `  <g>\n`;
+            svg += `    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="13" class="planet" />\n`;
           } else {
             svg += `  <g>\n`;
             svg += `    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="10" class="planet" />\n`;

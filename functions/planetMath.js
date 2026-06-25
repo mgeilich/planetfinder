@@ -149,6 +149,53 @@ export function calculatePlanetPositions(date, lat = 0, lon = 0) {
         }
     };
     
+    // Calculate Moon geocentric position using J2000.0 Keplerian elements
+    const d = diffDays;
+    let moon_L = (218.316 + 13.176396 * d) % 360;
+    let moon_M = (115.366 + 13.064993 * d) % 360;
+    let moon_N = (125.1228 - 0.0529538 * d) % 360;
+    let moon_w_bar = (318.063 + 0.164357 * d) % 360;
+    
+    if (moon_L < 0) moon_L += 360;
+    if (moon_M < 0) moon_M += 360;
+    if (moon_N < 0) moon_N += 360;
+    if (moon_w_bar < 0) moon_w_bar += 360;
+    
+    const rad = Math.PI / 180;
+    const M_rad = moon_M * rad;
+    const N_rad = moon_N * rad;
+    const w_bar_rad = moon_w_bar * rad;
+    const w_rad = w_bar_rad - N_rad; // Argument of perigee
+    const moon_i = 5.1454 * rad;
+    const moon_e = 0.054900;
+    const moon_a = 0.00257; // in AU
+    
+    // Solve Kepler's Equation for the Moon
+    let moon_E = M_rad + moon_e * Math.sin(M_rad);
+    for (let iter = 0; iter < 10; iter++) {
+        moon_E = M_rad + moon_e * Math.sin(moon_E);
+    }
+    
+    const moon_x_prime = moon_a * (Math.cos(moon_E) - moon_e);
+    const moon_y_prime = moon_a * Math.sqrt(1 - moon_e*moon_e) * Math.sin(moon_E);
+    
+    const moon_xecl = moon_x_prime * (Math.cos(w_rad)*Math.cos(N_rad) - Math.sin(w_rad)*Math.sin(N_rad)*Math.cos(moon_i)) - moon_y_prime * (Math.sin(w_rad)*Math.cos(N_rad) + Math.cos(w_rad)*Math.sin(N_rad)*Math.cos(moon_i));
+    const moon_yecl = moon_x_prime * (Math.cos(w_rad)*Math.sin(N_rad) + Math.sin(w_rad)*Math.cos(N_rad)*Math.cos(moon_i)) - moon_y_prime * (Math.sin(w_rad)*Math.sin(N_rad) - Math.cos(w_rad)*Math.cos(N_rad)*Math.cos(moon_i));
+    const moon_zecl = moon_x_prime * (Math.sin(w_rad)*Math.sin(moon_i)) + moon_y_prime * (Math.cos(w_rad)*Math.sin(moon_i));
+    
+    const obliq2 = 23.43928 * rad;
+    const moon_xeq = moon_xecl;
+    const moon_yeq = moon_yecl * Math.cos(obliq2) - moon_zecl * Math.sin(obliq2);
+    const moon_zeq = moon_yecl * Math.sin(obliq2) + moon_zecl * Math.cos(obliq2);
+    
+    results['Moon'] = {
+        geocentric: {
+            xgeo: moon_xeq,
+            ygeo: moon_yeq,
+            zgeo: moon_zeq
+        }
+    };
+    
     // Calculate Local Sidereal Time (LST)
     const LST_deg = calculateLST(date, lon);
 
@@ -160,6 +207,10 @@ export function calculatePlanetPositions(date, lat = 0, lon = 0) {
             xgeo = results['Sun'].geocentric.xgeo;
             ygeo = results['Sun'].geocentric.ygeo;
             zgeo = results['Sun'].geocentric.zgeo;
+        } else if (planet === 'Moon') {
+            xgeo = results['Moon'].geocentric.xgeo;
+            ygeo = results['Moon'].geocentric.ygeo;
+            zgeo = results['Moon'].geocentric.zgeo;
         } else {
             xgeo = results[planet].xeq - earth.xeq;
             ygeo = results[planet].yeq - earth.yeq;
