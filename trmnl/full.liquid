@@ -2,7 +2,7 @@
   <div class="flex flex--row portrait:flex--col w--full h--full">
     <!-- Panel 1: Sky Map (680px wide, overlaps into altitude column) -->
     <div class="flex flex--col justify--center w--[680px] h--[480px] portrait:w--full portrait:h--[240px]" style="margin-right: -140px;">
-      <img src="https://planetfinder-web-2605.web.app/api/sky.svg?lat={{ latitude }}&lon={{ longitude }}&v=114" 
+      <img src="https://planetfinder-web-2605.web.app/api/sky.svg?lat={{ latitude }}&lon={{ longitude }}&v=115" 
            class="image image-dither w--[680px] h--[480px] portrait:w--[240px] portrait:h--[240px]"
            style="display: block;" />
     </div>
@@ -16,7 +16,7 @@
               <table style="width: 100%; border-collapse: collapse;">
                 <thead>
                   <tr>
-                    <td style="width: 10px; border: none;"></td>
+                    <td style="width: 22px; border: none;"></td>
                     <th colspan="2" class="text--base text--bold text--black" style="text-align: center; border: none; padding-bottom: 8px;">POSITION</th>
                   </tr>
                 </thead>
@@ -24,9 +24,9 @@
                   {% for planet in planets %}
                     {% if planet.visible %}
                       <tr class="border--bottom" style="height: 32px;">
-                        <td style="width: 10px; border: none;"></td>
-                        <td class="text--left text--base text--bold text--black" style="text-align: left; border: none; vertical-align: middle;">{{ planet.name }}</td>
-                        <td class="text--right text--base text--bold text--black" style="text-align: right; border: none; vertical-align: middle; white-space: nowrap;">
+                        <td style="width: 22px; border: none;"></td>
+                        <td class="text--center text--base text--bold text--black" style="text-align: center; border: none; vertical-align: middle;">{{ planet.name }}</td>
+                        <td class="text--right text--base text--bold text--black" style="width: 45px; text-align: right; border: none; vertical-align: middle; white-space: nowrap;">
                           {{ planet.altitude_formatted }} <span style="font-size: 11px; color: #808080; font-weight: normal;">{{ planet.compass_direction }}</span>
                         </td>
                       </tr>
