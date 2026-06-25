@@ -183,12 +183,21 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
     const LST_deg = calculateLST(date, lon);
     const planetPositions = calculatePlanetPositions(date, lat, lon);
 
-    // Setup SVG dimensions (680x480, circular planisphere centered at 340, 240)
+    // Setup SVG dimensions (680x480, centered at 340, 240)
     const width = 680;
     const height = 480;
     const cx = 340;
     const cy = 240;
-    const r = 235;
+    const r = 175; // Coordinate space radius
+
+    // Rotation angles for 3D perspective
+    const alpha = -30 * (Math.PI / 180); // Yaw
+    const beta = 22 * (Math.PI / 180);  // Pitch
+    
+    const cosA = Math.cos(alpha);
+    const sinA = Math.sin(alpha);
+    const cosB = Math.cos(beta);
+    const sinB = Math.sin(beta);
 
     let svg = `<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 ${width} ${height}" width="100%" height="100%">\n`;
     
@@ -200,29 +209,77 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
     svg += `    .star { fill: black; stroke: none; }\n`;
     svg += `    .planet { fill: black; stroke: black; stroke-width: 1; }\n`;
     svg += `    .sun-body { fill: none; stroke: black; stroke-width: 1.5; }\n`;
-    svg += `    .label { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 20px; fill: black; font-weight: bold; }\n    .cardinal { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 30px; fill: black; font-weight: 800; }\n    .sky-bg { fill: white; }\n  </style>\n`;
+    svg += `    .projection-line { stroke: #808080; stroke-width: 0.8; stroke-dasharray: 2,3; fill: none; }\n`;
+    svg += `    .label { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 16px; fill: black; font-weight: bold; }\n`;
+    svg += `    .cardinal { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 26px; fill: black; font-weight: 800; }\n`;
+    svg += `    .sky-bg { fill: white; }\n`;
+    svg += `  </style>\n`;
 
     // Outer sky vault canvas background
-    svg += `  <circle cx="${cx}" cy="${cy}" r="${r}" class="sky-bg" />\n`;
+    svg += `  <rect width="${width}" height="${height}" class="sky-bg" />\n`;
 
     // Projected Coordinate helper
-    const project = (alt, az) => {
-      // Map Altitude (0 to 90) to radius (r to 0)
-      const pr = r * (1 - (alt / 90));
-      // Map Azimuth: 0 = North (up), 90 = East (right), 180 = South (down), 270 = West (left)
-      const theta = (az - 90) * (Math.PI / 180);
+    const project = (alt, az, radius = r) => {
+      const altRad = alt * (Math.PI / 180);
+      const azRad = az * (Math.PI / 180);
+      const y = radius * Math.sin(altRad);
+      const r_xz = radius * Math.cos(altRad);
+      const x = r_xz * Math.sin(azRad);
+      const z = -r_xz * Math.cos(azRad);
+
+      // Rotate around Y axis (Yaw)
+      const x1 = x * cosA - z * sinA;
+      const z1 = x * sinA + z * cosA;
+      
+      // Rotate around X axis (Pitch)
+      const y2 = y * cosB - z1 * sinB;
+      
       return {
-        x: cx + pr * Math.cos(theta),
-        y: cy + pr * Math.sin(theta)
+        x: cx + x1,
+        y: cy - y2
       };
     };
 
-    // 1. Draw Grid Lines (Horizon crosshairs)
+    // 1. Draw Grid Lines (Horizon and altitude rings, meridians)
     svg += `  <!-- Grid & Horizon -->\n`;
-    svg += `  <circle cx="${cx}" cy="${cy}" r="${r}" class="horizon" />\n`;
-    svg += `  <circle cx="${cx}" cy="${cy}" r="${r * 0.5}" class="grid-line" />\n`; // 45 deg altitude circle
-    svg += `  <line x1="${cx}" y1="${cy - r}" x2="${cx}" y2="${cy + r}" class="grid-line" />\n`; // N-S axis
-    svg += `  <line x1="${cx - r}" y1="${cy}" x2="${cx + r}" y2="${cy}" class="grid-line" />\n`; // E-W axis
+    
+    // Horizon boundary (altitude 0)
+    let horizonPath = "";
+    for (let az = 0; az <= 360; az += 5) {
+      const pt = project(0, az);
+      horizonPath += `${az === 0 ? 'M' : 'L'} ${pt.x.toFixed(1)} ${pt.y.toFixed(1)} `;
+    }
+    horizonPath += "Z";
+    svg += `  <path d="${horizonPath}" class="horizon" />\n`;
+
+    // Altitude rings at 30 and 60 degrees
+    [30, 60].forEach((alt) => {
+      let ringPath = "";
+      for (let az = 0; az <= 360; az += 5) {
+        const pt = project(alt, az);
+        ringPath += `${az === 0 ? 'M' : 'L'} ${pt.x.toFixed(1)} ${pt.y.toFixed(1)} `;
+      }
+      ringPath += "Z";
+      svg += `  <path d="${ringPath}" class="grid-line" />\n`;
+    });
+
+    // Azimuth meridian lines (meridians) every 45 degrees
+    const azimuths = [0, 45, 90, 135, 180, 225, 270, 315];
+    azimuths.forEach((az) => {
+      let meridianPath = "";
+      for (let alt = 0; alt <= 90; alt += 5) {
+        const pt = project(alt, az);
+        meridianPath += `${alt === 0 ? 'M' : 'L'} ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`;
+      }
+      svg += `  <path d="${meridianPath}" class="grid-line" />\n`;
+    });
+
+    // Ground plane compass spoke lines (from center to horizon)
+    const centerPt = { x: cx, y: cy };
+    azimuths.forEach((az) => {
+      const horizonPt = project(0, az);
+      svg += `  <line x1="${centerPt.x.toFixed(1)}" y1="${centerPt.y.toFixed(1)}" x2="${horizonPt.x.toFixed(1)}" y2="${horizonPt.y.toFixed(1)}" class="grid-line" />\n`;
+    });
 
     // 2. Draw Constellations
     svg += `  <!-- Constellations -->\n`;
@@ -268,7 +325,6 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
             const pos = convertRaDecToAltAz(ra, dec, lat, LST_deg);
             if (pos.altitude >= 0) {
               const pt = project(pos.altitude, pos.azimuth);
-              // Star size varies by magnitude
               const starRadius = Math.max(0.5, 2.5 - 0.5 * mag);
               svg += `  <circle cx="${pt.x.toFixed(1)}" cy="${pt.y.toFixed(1)}" r="${starRadius.toFixed(1)}" class="star" />\n`;
             }
@@ -317,6 +373,12 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
           const px = pt.x;
           const py = pt.y;
 
+          // Draw vertical and radial projection lines
+          const groundPt = project(0, data.azimuth);
+          svg += `  <!-- Projection lines for ${name} -->\n`;
+          svg += `  <line x1="${px.toFixed(1)}" y1="${py.toFixed(1)}" x2="${groundPt.x.toFixed(1)}" y2="${groundPt.y.toFixed(1)}" class="projection-line" />\n`;
+          svg += `  <line x1="${centerPt.x.toFixed(1)}" y1="${centerPt.y.toFixed(1)}" x2="${groundPt.x.toFixed(1)}" y2="${groundPt.y.toFixed(1)}" class="projection-line" />\n`;
+
           if (name === "Sun") {
             svg += `  <g>\n`;
             svg += `    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="6" class="sun-body" />\n`;
@@ -326,9 +388,10 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
             svg += `    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="3" class="planet" />\n`;
           }
 
-          // Determine label position
-          const labelWidth = name.length * 12.0;
-          const labelHeight = 20;
+          // Determine label position with altitude info included
+          const labelText = `${name} (${data.altitude >= 0 ? "+" : ""}${Math.round(data.altitude)}°)`;
+          const labelWidth = labelText.length * 9.5;
+          const labelHeight = 18;
           let lx = px;
           let ly = py - 9;
           let anchor = "middle";
@@ -390,17 +453,23 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
             svg += `    <rect x="${bx1.toFixed(1)}" y="${by1.toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" fill="white" opacity="0.9" rx="3" ry="3" />\n`;
           }
 
-          svg += `    <text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" class="label" text-anchor="${anchor}">${name}</text>\n`;
+          svg += `    <text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" class="label" text-anchor="${anchor}">${labelText}</text>\n`;
           svg += `  </g>\n`;
         }
       });
 
     // 5. Draw Cardinal Direction Markers
+    const labelRadius = r + 15;
+    const nPt = project(0, 0, labelRadius);
+    const ePt = project(0, 90, labelRadius);
+    const sPt = project(0, 180, labelRadius);
+    const wPt = project(0, 270, labelRadius);
+
     svg += `  <!-- Cardinal Directions -->\n`;
-    svg += `  <text x="${cx.toFixed(1)}" y="${(cy - r - 8).toFixed(1)}" class="cardinal" text-anchor="middle">N</text>\n`;
-    svg += `  <text x="${(cx + r + 16).toFixed(1)}" y="${(cy + 10).toFixed(1)}" class="cardinal" text-anchor="middle">E</text>\n`;
-    svg += `  <text x="${cx.toFixed(1)}" y="${(cy + r + 20).toFixed(1)}" class="cardinal" text-anchor="middle">S</text>\n`;
-    svg += `  <text x="${(cx - r - 16).toFixed(1)}" y="${(cy + 10).toFixed(1)}" class="cardinal" text-anchor="middle">W</text>\n`;
+    svg += `  <text x="${nPt.x.toFixed(1)}" y="${(nPt.y + 8).toFixed(1)}" class="cardinal" text-anchor="middle">N</text>\n`;
+    svg += `  <text x="${ePt.x.toFixed(1)}" y="${(ePt.y + 8).toFixed(1)}" class="cardinal" text-anchor="middle">E</text>\n`;
+    svg += `  <text x="${sPt.x.toFixed(1)}" y="${(sPt.y + 8).toFixed(1)}" class="cardinal" text-anchor="middle">S</text>\n`;
+    svg += `  <text x="${wPt.x.toFixed(1)}" y="${(wPt.y + 8).toFixed(1)}" class="cardinal" text-anchor="middle">W</text>\n`;
 
     svg += `</svg>`;
 
