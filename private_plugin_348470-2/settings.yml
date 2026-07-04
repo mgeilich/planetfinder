@@ -6,18 +6,27 @@ static_data: ''
 polling_verb: get
 framework_version: 3.1.1
 serverless_language: ''
-polling_url: https://planetfinder-web-2605.web.app/api/trmnl?lat=40.7128&lon=-74.0060
+polling_url: https://planetfinder-web-2605.web.app/api/trmnl?lat={{lat}}&lon={{lon}}
 polling_headers: ''
 polling_body: ''
 id: 348470
 custom_fields:
+- keyname: lat
+  field_type: text
+  name: Latitude
+  default_value: '40.7128'
+  description: 'Enter your latitude.'
+- keyname: lon
+  field_type: text
+  name: Longitude
+  default_value: '-74.0060'
+  description: 'Enter your longitude.'
 - keyname: author_bio
   field_type: author_bio
   name: Support & Author Bio
-  description: 'Planet Finder displays a real-time planisphere/sky map of stars, constellations, and planet altitudes, along with local astronomical coordinates and time.
-
-    '
+  default_value: 'Created by Michael Geilich. Please report any issues on GitHub.'
+  description: 'Planet Finder displays a real-time planisphere/sky map of stars, constellations, and planet altitudes, along with local astronomical coordinates and time.'
   github_url: https://github.com/mgeilich/planetfinder
-  category: discovery,education
+  category: discovery, education
 name: Planet Finder
 refresh_interval: 60

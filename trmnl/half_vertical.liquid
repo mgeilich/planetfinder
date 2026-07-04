@@ -1,34 +1,34 @@
-<div class="view layout padding--none bg--white">
-  <div class="flex flex--col w--full h--full lg:flex--col">
+<div class="layout">
+  <div class="flex flex--col h--full">
     <!-- Top Panel: Sky Map -->
-    <div class="flex flex--col justify--center items--center w--full h--[240px] lg:h--[240px]">
-      <img src="https://planetfinder-web-2605.web.app/api/sky.svg?lat={{ latitude }}&lon={{ longitude }}&v=120" 
-           class="image image-dither w--[240px] h--[240px] lg:w--[240px] lg:h--[240px]" />
+    <div class="flex flex--col justify--center items--center flex--1 min-h--0">
+      <img src="https://planetfinder-web-2605.web.app/api/sky.svg?lat={{ latitude }}&lon={{ longitude }}&v=126" 
+           class="image image-dither max-h--full object--contain" />
     </div>
     <!-- Bottom Panel: Stats -->
-    <div class="flex flex--col justify--start gap--2 w--full h--[240px] pt--2 pb--2 pl--3 pr--3 border--top lg:pt--2">
+    <div class="flex flex--col justify--center gap--2 lg:gap--4 p--3 lg:p--6 border--top min-h--[45%] lg:min-h--[50%]">
       <div class="flex flex--row justify--between items--center w--full">
-        <div class="flex flex--col gap--1">
-          <span class="text--xsmall label text--bold text--black" style="font-weight: 900;">COORDINATES & TIME</span>
-          <span class="text--xsmall text--bold">{{ latitude }}, {{ longitude }}</span>
-          <span class="text--xsmall text--bold">{{ last_updated }}</span>
+        <div class="flex flex--col gap--1 lg:gap--2">
+          <span class="text--xsmall lg:text--small label text--bold text--black">COORDINATES & TIME</span>
+          <span class="text--xsmall lg:text--base text--bold">{{ latitude }}, {{ longitude }}</span>
+          <span class="text--xsmall lg:text--base text--bold">{{ last_updated }}</span>
         </div>
-        <div class="flex flex--row items--center gap--2">
-          <span class="value--large">{{ moon_phase_emoji }}</span>
+        <div class="flex flex--row items--center gap--2 lg:gap--4">
+          <span class="value--large lg:value--xxlarge">{{ moon_phase_emoji }}</span>
           <div class="flex flex--col justify--center">
-            <span class="text--xsmall text--bold">{{ moon_phase }}</span>
-            <span class="text--xxsmall label text--black">{{ moon_illumination }}% lit</span>
+            <span class="text--xsmall lg:text--base text--bold">{{ moon_phase }}</span>
+            <span class="text--xxsmall lg:text--small label text--black">{{ moon_illumination }}% lit</span>
           </div>
         </div>
       </div>
-      <div class="flex flex--col gap--1 w--full mt--1">
-        <span class="text--xsmall label text--bold text--black" style="font-weight: 900;">UPCOMING EVENT</span>
+      <div class="flex flex--col gap--1 lg:gap--2 w--full mt--1 lg:mt--3">
+        <span class="text--xsmall lg:text--small label text--bold text--black">UPCOMING EVENT</span>
         {% if next_event.title %}
-          <span class="text--xsmall text--bold">{{ next_event.title }}</span>
-          <span class="text--xsmall label text--black">{{ next_event.date_formatted }}</span>
-          <span class="text--xsmall">{{ next_event.description }}</span>
+          <span class="text--xsmall lg:text--large text--bold">{{ next_event.title }}</span>
+          <span class="text--xsmall lg:text--base label text--black">{{ next_event.date_formatted }}</span>
+          <span class="text--xsmall lg:text--base">{{ next_event.description }}</span>
         {% else %}
-          <span class="text--xsmall label text--black">No events soon</span>
+          <span class="text--xsmall lg:text--base label text--black">No events soon</span>
         {% endif %}
       </div>
     </div>

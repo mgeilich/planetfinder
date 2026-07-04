@@ -184,12 +184,24 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
     const LST_deg = calculateLST(date, lon);
     const planetPositions = calculatePlanetPositions(date, lat, lon);
 
-    // Setup SVG dimensions (680x480, centered at 340, 240)
-    const width = 680;
-    const height = 480;
-    const cx = 390; // Shifted dome center X to 390 (twice as much to the right)
-    const cy = 320; // Shifted center down to 320 to allow a larger dome radius
-    const r = 246; // Coordinate space radius (reduced by 15% from 290 to 246)
+    // Setup SVG dimensions (defaults to 680x480, centered at 390, 320)
+    let width = 680;
+    let height = 480;
+    let cx = 390; // Shifted dome center X to 390 (twice as much to the right)
+    let cy = 320; // Shifted center down to 320 to allow a larger dome radius
+    let r = 246; // Coordinate space radius (reduced by 15% from 290 to 246)
+    let fontSize = 30;
+
+    if (req.query.width || req.query.height) {
+      width = parseFloat(req.query.width) || 680;
+      height = parseFloat(req.query.height) || 480;
+      cx = width / 2;
+      r = Math.min(width * 0.37, height * 0.52);
+      cy = height * 0.78;
+      fontSize = Math.max(16, Math.round(30 * (r / 246)));
+    }
+
+    const scaleFactor = fontSize / 30.0;
 
     // Rotation angles for 3D perspective
     const alpha = -30 * (Math.PI / 180); // Yaw
@@ -205,14 +217,14 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
     // Background style (pure white for E-Ink, black/gray drawing lines)
     svg += `  <style>\n`;
     svg += `    .horizon { stroke: black; stroke-width: 2.0; fill: none; }\n`;
-    svg += `    .grid-line { stroke: #a0a0a0; stroke-width: 1.0; stroke-dasharray: 2,4; fill: none; }\n`;
     svg += `    .constellation-line { stroke: #b0b0b0; stroke-width: 1.0; stroke-dasharray: 2,2; fill: none; }\n`;
     svg += `    .star { fill: black; stroke: none; }\n`;
     svg += `    .planet { fill: black; stroke: white; stroke-width: 2.0; }\n`;
     svg += `    .sun-body { fill: none; stroke: black; stroke-width: 2.0; }\n`;
-    svg += `    .projection-line { stroke: black; stroke-width: 1.2; stroke-dasharray: 2,3; fill: none; }\n`;
-    svg += `    .label { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 30px; fill: black; font-weight: bold; }\n`;
-    svg += `    .cardinal { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: 30px; fill: #a0a0a0; font-weight: 300; }\n`;
+    svg += `    .leader-line { stroke: black; stroke-width: 1.0; stroke-dasharray: 1,2; fill: none; }\n`;
+    svg += `    .label { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: ${fontSize}px; fill: black; font-weight: bold; }\n`;
+    svg += `    .label-bg { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: ${fontSize}px; fill: none; stroke: white; stroke-width: ${Math.max(4, fontSize * 0.2)}px; stroke-linejoin: round; font-weight: bold; }\n`;
+    svg += `    .cardinal { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; font-size: ${fontSize}px; fill: #707070; font-weight: 400; }\n`;
     svg += `    .sky-bg { fill: white; }\n`;
     svg += `  </style>\n`;
 
@@ -234,10 +246,13 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
       
       // Rotate around X axis (Pitch)
       const y2 = y * cosB - z1 * sinB;
+      const z2 = y * sinB + z1 * cosB;
       
       return {
         x: cx + x1,
-        y: cy - y2
+        y: cy - y2,
+        z: z2,
+        r_ref: radius
       };
     };
 
@@ -252,35 +267,6 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
     }
     horizonPath += "Z";
     svg += `  <path d="${horizonPath}" class="horizon" />\n`;
-
-    // Altitude rings at 30 and 60 degrees
-    [30, 60].forEach((alt) => {
-      let ringPath = "";
-      for (let az = 0; az <= 360; az += 5) {
-        const pt = project(alt, az);
-        ringPath += `${az === 0 ? 'M' : 'L'} ${pt.x.toFixed(1)} ${pt.y.toFixed(1)} `;
-      }
-      ringPath += "Z";
-      svg += `  <path d="${ringPath}" class="grid-line" />\n`;
-    });
-
-    // Azimuth meridian lines (meridians) every 45 degrees
-    const azimuths = [0, 45, 90, 135, 180, 225, 270, 315];
-    azimuths.forEach((az) => {
-      let meridianPath = "";
-      for (let alt = 0; alt <= 90; alt += 5) {
-        const pt = project(alt, az);
-        meridianPath += `${alt === 0 ? 'M' : 'L'} ${pt.x.toFixed(1)} ${pt.y.toFixed(1)}`;
-      }
-      svg += `  <path d="${meridianPath}" class="grid-line" />\n`;
-    });
-
-    // Ground plane compass spoke lines (from center to horizon)
-    const centerPt = { x: cx, y: cy };
-    azimuths.forEach((az) => {
-      const horizonPt = project(0, az);
-      svg += `  <line x1="${centerPt.x.toFixed(1)}" y1="${centerPt.y.toFixed(1)}" x2="${horizonPt.x.toFixed(1)}" y2="${horizonPt.y.toFixed(1)}" class="grid-line" />\n`;
-    });
 
     // 2. Draw Constellations
     svg += `  <!-- Constellations -->\n`;
@@ -347,7 +333,9 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
         const data = planetPositions[name];
         if (data.altitude >= 0) {
           const pt = project(data.altitude, data.azimuth);
-          const rSize = name === "Sun" ? 22 : (name === "Moon" ? 18 : 14);
+          const depthNorm = Math.max(-1.5, Math.min(1.5, pt.z / r));
+          const depthScale = 1.0 - 0.25 * depthNorm;
+          const rSize = (name === "Sun" ? 22 : (name === "Moon" ? 18 : 14)) * depthScale;
           obstacles.push({
             x1: pt.x - rSize,
             y1: pt.y - rSize,
@@ -358,6 +346,9 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
       });
 
     const checkOverlap = (box) => {
+      if (box.y1 < 4 || box.y2 > height - 4 || box.x1 < 4 || box.x2 > width - 4) {
+        return true;
+      }
       for (const obs of obstacles) {
         const noOverlap = box.x2 < obs.x1 || box.x1 > obs.x2 || box.y2 < obs.y1 || box.y1 > obs.y2;
         if (!noOverlap) return true;
@@ -373,41 +364,42 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
           const pt = project(data.altitude, data.azimuth);
           const px = pt.x;
           const py = pt.y;
-
-          // Draw vertical and radial projection lines
-          const groundPt = project(0, data.azimuth);
-          svg += `  <!-- Projection lines for ${name} -->\n`;
-          svg += `  <line x1="${px.toFixed(1)}" y1="${py.toFixed(1)}" x2="${groundPt.x.toFixed(1)}" y2="${groundPt.y.toFixed(1)}" class="projection-line" />\n`;
-          svg += `  <line x1="${centerPt.x.toFixed(1)}" y1="${centerPt.y.toFixed(1)}" x2="${groundPt.x.toFixed(1)}" y2="${groundPt.y.toFixed(1)}" class="projection-line" />\n`;
+          
+          // Calculate a depth scale based on z-coordinate to give 3D perspective
+          // North (front) has negative z, South (back) has positive z
+          const depthNorm = Math.max(-1.5, Math.min(1.5, pt.z / r));
+          const depthScale = 1.0 - 0.25 * depthNorm; // Range ~ [0.625, 1.375]
 
           if (name === "Sun") {
             svg += `  <g>\n`;
-            svg += `    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="16" class="sun-body" />\n`;
-            svg += `    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="4" fill="black" />\n`;
+            svg += `    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${(16 * depthScale).toFixed(1)}" class="sun-body" />\n`;
+            svg += `    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${(4 * depthScale).toFixed(1)}" fill="black" />\n`;
           } else if (name === "Moon") {
             svg += `  <g>\n`;
-            svg += `    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="13" class="planet" />\n`;
+            svg += `    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${(13 * depthScale).toFixed(1)}" class="planet" />\n`;
           } else {
             svg += `  <g>\n`;
-            svg += `    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="10" class="planet" />\n`;
+            svg += `    <circle cx="${px.toFixed(1)}" cy="${py.toFixed(1)}" r="${(10 * depthScale).toFixed(1)}" class="planet" />\n`;
           }
 
           // Determine label position without altitude (makes it cleaner)
           const labelText = name;
-          const labelWidth = labelText.length * 18.0;
-          const labelHeight = 36;
+          const labelWidth = labelText.length * 18.0 * scaleFactor;
+          const labelHeight = 36 * scaleFactor;
+          const lxOffset = 18 * scaleFactor;
+          const lyOffset = 4 * scaleFactor;
           let lx = px;
-          let ly = py - 18;
+          let ly = py - 18 * scaleFactor;
           let anchor = "middle";
           let found = false;
           let finalBox = null;
 
           // Try 4 directions: Top, Bottom, Right, Left
           const candidates = [
-            { lx: px, ly: py - 18, anchor: "middle", box: { x1: px - labelWidth/2, y1: py - 18 - labelHeight, x2: px + labelWidth/2, y2: py - 18 } },
-            { lx: px, ly: py + 26, anchor: "middle", box: { x1: px - labelWidth/2, y1: py + 26, x2: px + labelWidth/2, y2: py + 26 + labelHeight } },
-            { lx: px + 18, ly: py + 4, anchor: "start", box: { x1: px + 18, y1: py + 4 - labelHeight/2, x2: px + 18 + labelWidth, y2: py + 4 + labelHeight/2 } },
-            { lx: px - 18, ly: py + 4, anchor: "end", box: { x1: px - 18 - labelWidth, y1: py + 4 - labelHeight/2, x2: px - 18, y2: py + 4 + labelHeight/2 } }
+            { lx: px, ly: py - 18 * scaleFactor, anchor: "middle", box: { x1: px - labelWidth/2, y1: py - 18 * scaleFactor - labelHeight, x2: px + labelWidth/2, y2: py - 18 * scaleFactor } },
+            { lx: px, ly: py + 26 * scaleFactor, anchor: "middle", box: { x1: px - labelWidth/2, y1: py + 26 * scaleFactor, x2: px + labelWidth/2, y2: py + 26 * scaleFactor + labelHeight } },
+            { lx: px + lxOffset, ly: py + lyOffset, anchor: "start", box: { x1: px + lxOffset, y1: py + lyOffset - labelHeight/2, x2: px + lxOffset + labelWidth, y2: py + lyOffset + labelHeight/2 } },
+            { lx: px - lxOffset, ly: py + lyOffset, anchor: "end", box: { x1: px - lxOffset - labelWidth, y1: py + lyOffset - labelHeight/2, x2: px - lxOffset, y2: py + lyOffset + labelHeight/2 } }
           ];
 
           for (const cand of candidates) {
@@ -424,21 +416,30 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
 
           // Fallback: stack vertically if all directions are blocked
           if (!found) {
-            let offset = 9;
+            let offset = 9 * scaleFactor;
             while (true) {
-              const testBox = { x1: px - labelWidth/2, y1: py - offset - labelHeight, x2: px + labelWidth/2, y2: py - offset };
-              if (!checkOverlap(testBox)) {
+              const testBoxUp = { x1: px - labelWidth/2, y1: py - offset - labelHeight, x2: px + labelWidth/2, y2: py - offset };
+              if (!checkOverlap(testBoxUp)) {
                 lx = px;
                 ly = py - offset;
                 anchor = "middle";
-                obstacles.push(testBox);
-                finalBox = testBox;
+                obstacles.push(testBoxUp);
+                finalBox = testBoxUp;
                 break;
               }
-              offset += 12;
-              if (offset > 120) { // Safety limit
+              const testBoxDown = { x1: px - labelWidth/2, y1: py + offset, x2: px + labelWidth/2, y2: py + offset + labelHeight };
+              if (!checkOverlap(testBoxDown)) {
                 lx = px;
-                ly = py - 9;
+                ly = py + offset + labelHeight * 0.8;
+                anchor = "middle";
+                obstacles.push(testBoxDown);
+                finalBox = testBoxDown;
+                break;
+              }
+              offset += 12 * scaleFactor;
+              if (offset > 120 * scaleFactor) { // Safety limit
+                lx = px;
+                ly = py - 9 * scaleFactor;
                 anchor = "middle";
                 finalBox = candidates[0].box;
                 break;
@@ -446,34 +447,32 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
             }
           }
 
-          // Render a clean background rect for legibility on E-Ink / map lines
           if (finalBox) {
-            const padX = 2;
-            const padY = 1;
-            const bx1 = finalBox.x1 - padX;
-            const by1 = finalBox.y1 - padY;
-            const bw = (finalBox.x2 - finalBox.x1) + padX * 2;
-            const bh = (finalBox.y2 - finalBox.y1) + padY * 2;
-            svg += `    <rect x="${bx1.toFixed(1)}" y="${by1.toFixed(1)}" width="${bw.toFixed(1)}" height="${bh.toFixed(1)}" fill="white" opacity="1.0" rx="4" ry="4" />\n`;
+            const boxCenterX = (finalBox.x1 + finalBox.x2) / 2;
+            const boxCenterY = (finalBox.y1 + finalBox.y2) / 2;
+            const dist = Math.hypot(boxCenterX - px, boxCenterY - py);
+            if (dist > 10 * scaleFactor) {
+              svg += `    <line x1="${px.toFixed(1)}" y1="${py.toFixed(1)}" x2="${boxCenterX.toFixed(1)}" y2="${boxCenterY.toFixed(1)}" class="leader-line" />\n`;
+            }
           }
-
+          svg += `    <text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" class="label-bg" text-anchor="${anchor}">${labelText}</text>\n`;
           svg += `    <text x="${lx.toFixed(1)}" y="${ly.toFixed(1)}" class="label" text-anchor="${anchor}">${labelText}</text>\n`;
           svg += `  </g>\n`;
         }
       });
 
     // 5. Draw Cardinal Direction Markers
-    const labelRadius = r + 15;
+    const labelRadius = r + 15 * scaleFactor;
     const nPt = project(0, 0, labelRadius);
     const ePt = project(0, 90, labelRadius);
     const sPt = project(0, 180, labelRadius);
     const wPt = project(0, 270, labelRadius);
 
     svg += `  <!-- Cardinal Directions -->\n`;
-    svg += `  <text x="${nPt.x.toFixed(1)}" y="${(nPt.y + 8).toFixed(1)}" class="cardinal" text-anchor="middle">N</text>\n`;
-    svg += `  <text x="${ePt.x.toFixed(1)}" y="${(ePt.y + 8).toFixed(1)}" class="cardinal" text-anchor="middle">E</text>\n`;
-    svg += `  <text x="${sPt.x.toFixed(1)}" y="${(sPt.y + 8).toFixed(1)}" class="cardinal" text-anchor="middle">S</text>\n`;
-    svg += `  <text x="${wPt.x.toFixed(1)}" y="${(wPt.y + 8).toFixed(1)}" class="cardinal" text-anchor="middle">W</text>\n`;
+    svg += `  <text x="${nPt.x.toFixed(1)}" y="${(nPt.y + 8 * scaleFactor).toFixed(1)}" class="cardinal" text-anchor="middle">N</text>\n`;
+    svg += `  <text x="${ePt.x.toFixed(1)}" y="${(ePt.y + 8 * scaleFactor).toFixed(1)}" class="cardinal" text-anchor="middle">E</text>\n`;
+    svg += `  <text x="${sPt.x.toFixed(1)}" y="${(sPt.y + 8 * scaleFactor).toFixed(1)}" class="cardinal" text-anchor="middle">S</text>\n`;
+    svg += `  <text x="${wPt.x.toFixed(1)}" y="${(wPt.y + 8 * scaleFactor).toFixed(1)}" class="cardinal" text-anchor="middle">W</text>\n`;
 
     svg += `</svg>`;
 

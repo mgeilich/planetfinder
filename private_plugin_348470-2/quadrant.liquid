@@ -1,23 +1,23 @@
-<div class="view layout padding--none bg--white">
-  <div class="flex flex--row w--full h--full lg:flex--row">
+<div class="layout">
+  <div class="grid grid--cols-2 portrait:grid--cols-1 h--full w--full">
     <!-- Left Panel: Sky Map -->
-    <div class="flex flex--col justify--center items--center w--[160px] h--[240px] lg:w--[160px]">
-      <img src="https://planetfinder-web-2605.web.app/api/sky.svg?lat={{ latitude }}&lon={{ longitude }}&v=120" 
-           class="image image-dither w--[160px] h--[160px] lg:w--[160px] lg:h--[160px]" />
+    <div class="flex flex--col justify--center items--center">
+      <img src="https://planetfinder-web-2605.web.app/api/sky.svg?lat={{ latitude }}&lon={{ longitude }}&v=126" 
+           class="image image-dither object--contain max-h--full max-w--full" />
     </div>
     <!-- Right Panel: Info -->
-    <div class="flex flex--col justify--center gap--2 w--[240px] h--[240px] pt--2 pb--2 pl--2 pr--2 border--left lg:pl--2">
-      <div class="flex flex--row items--center gap--2">
-        <span class="value--large">{{ moon_phase_emoji }}</span>
+    <div class="flex flex--col justify--center gap--2 lg:gap--4 p--2 lg:p--4 border--left portrait:border--top portrait:border--left-none">
+      <div class="flex flex--row items--center gap--2 lg:gap--4">
+        <span class="value--large lg:value--xxlarge">{{ moon_phase_emoji }}</span>
         <div class="flex flex--col justify--center">
-          <span class="text--xsmall text--bold">{{ moon_phase }}</span>
-          <span class="text--xxsmall label text--black">{{ moon_illumination }}% lit</span>
+          <span class="text--xsmall lg:text--base text--bold">{{ moon_phase }}</span>
+          <span class="text--xxsmall lg:text--small label text--black">{{ moon_illumination }}% lit</span>
         </div>
       </div>
-      <div class="flex flex--col gap--1">
-        <span class="text--xsmall label text--bold text--black" style="font-weight: 900;">COORDINATES & TIME</span>
-        <span class="text--xsmall text--bold">{{ latitude }}, {{ longitude }}</span>
-        <span class="text--xsmall text--bold">{{ last_updated }}</span>
+      <div class="flex flex--col gap--1 lg:gap--2 mt--1 lg:mt--2">
+        <span class="text--xsmall lg:text--small label text--bold text--black">COORDINATES & TIME</span>
+        <span class="text--xsmall lg:text--base text--bold">{{ latitude }}, {{ longitude }}</span>
+        <span class="text--xsmall lg:text--base text--bold">{{ last_updated }}</span>
       </div>
     </div>
   </div>

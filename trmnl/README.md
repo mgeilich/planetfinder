@@ -15,12 +15,25 @@ This guide describes how to configure your custom private plugin on the **TRMNL 
 3. Set the following settings:
    - **Name**: `Planet Finder`
    - **Data Strategy**: `Polling`
-   - **Polling URL**: `https://<YOUR_PROJECT_ID>.web.app/api/trmnl?lat=<YOUR_LATITUDE>&lon=<YOUR_LONGITUDE>`
-     * *Example*: `https://planetfinder-web-2605.web.app/api/trmnl?lat=40.7128&lon=-74.0060`
-     * (Replace `<YOUR_PROJECT_ID>`, `<YOUR_LATITUDE>`, and `<YOUR_LONGITUDE>` with your project's ID and your local coordinates).
+   - **Polling URL**: `https://<YOUR_PROJECT_ID>.web.app/api/trmnl?lat={{lat}}&lon={{lon}}`
+     * *Example*: `https://planetfinder-web-2605.web.app/api/trmnl?lat={{lat}}&lon={{lon}}`
+     * (Replace `<YOUR_PROJECT_ID>` with your project's ID).
    - **Refresh Rate**: Every 1 hour (or as desired).
 
-### 2. Configure the Markup
+### 2. Configure Form Fields
+To let users input their latitude and longitude, add two Form Fields to your plugin in the **Form Builder** tab:
+1. **Latitude**:
+   - Label: `Latitude`
+   - Keyname: `lat`
+   - Type: `Text`
+   - Default value: `40.7128`
+2. **Longitude**:
+   - Label: `Longitude`
+   - Keyname: `lon`
+   - Type: `Text`
+   - Default value: `-74.0060`
+
+### 3. Configure the Markup
 1. In your new TRMNL plugin, go to the **Developer / Markup** tab.
 2. Select **Full Width / Height** template (`full.liquid`).
 3. Copy and paste the contents of [full.liquid](full.liquid) into the editor.
