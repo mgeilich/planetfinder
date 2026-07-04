@@ -24,9 +24,8 @@ custom_fields:
 - keyname: author_bio
   field_type: author_bio
   name: Support & Author Bio
-  default_value: 'Created by Michael Geilich. Please report any issues on GitHub.'
-  description: 'Planet Finder displays a real-time planisphere/sky map of stars, constellations, and planet altitudes, along with local astronomical coordinates and time.'
+  description: 'Planet Finder displays a real-time planisphere/sky map.<br>Created by Michael Geilich. Please report any issues on GitHub.'
   github_url: https://github.com/mgeilich/planetfinder
-  category: discovery, education
+  category: discovery,education
 name: Planet Finder
 refresh_interval: 60
