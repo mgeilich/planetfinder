@@ -1,0 +1,11 @@
+{% template title_bar %}
+<div class="title_bar">
+  <img class="image" src="https://planetfinder-web-2605.web.app/trmnl-icon.svg" />
+  <span class="title">Planet Finder</span>
+  {% if coords_error %}
+    <span class="instance">{{ coords_error }}</span>
+  {% else %}
+    <span class="instance">{{ instance }}</span>
+  {% endif %}
+</div>
+{% endtemplate %}

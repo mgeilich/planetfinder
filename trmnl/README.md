@@ -15,39 +15,23 @@ This guide describes how to configure your custom private plugin on the **TRMNL 
 3. Set the following settings:
    - **Name**: `Planet Finder`
    - **Data Strategy**: `Polling`
-   - **Polling URL**: `https://<YOUR_PROJECT_ID>.web.app/api/trmnl?lat={{lat}}&lon={{lon}}`
-     * *Example*: `https://planetfinder-web-2605.web.app/api/trmnl?lat={{lat}}&lon={{lon}}`
-     * (Replace `<YOUR_PROJECT_ID>` with your project's ID).
+   - **Polling URL**: `https://planetfinder-web-2605.web.app/api/trmnl?lat={{lat}}&lon={{lon}}&tz={{tz}}`
    - **Refresh Rate**: Every 1 hour (or as desired).
 
-### 2. Configure Form Fields
-To let users input their latitude and longitude, add two Form Fields to your plugin in the **Form Builder** tab:
-1. **Latitude**:
-   - Label: `Latitude`
-   - Keyname: `lat`
-   - Type: `Text`
-   - Default value: `40.7128`
-2. **Longitude**:
-   - Label: `Longitude`
-   - Keyname: `lon`
-   - Type: `Text`
-   - Default value: `-74.0060`
+### 2. Form Fields
+The form fields are defined in [settings.yml](settings.yml): `lat`, `lon`, an optional `tz` (time zone name such as `America/New_York`), and the author bio. Importing `settings.yml` sets them up; there is no need to add them by hand.
 
 ### 3. Configure the Markup
-1. In your new TRMNL plugin, go to the **Developer / Markup** tab.
-2. Select **Full Width / Height** template (`full.liquid`).
-3. Copy and paste the contents of [full.liquid](full.liquid) into the editor.
-4. Locate the `<img>` tag in the markup:
-   ```html
-   <img src="https://YOUR_FIREBASE_PROJECT_ID.web.app/api/sky.svg?lat={{ latitude }}&lon={{ longitude }}" ... />
-   ```
-   Replace `YOUR_FIREBASE_PROJECT_ID` with your actual Firebase Project ID (e.g. `planetfinder-web-2605`).
-5. Save the settings.
+1. In the plugin's **Markup** editor, paste [shared.liquid](shared.liquid) into the **Shared** tab. It defines the title bar used by every layout.
+2. Paste [full.liquid](full.liquid), [half_horizontal.liquid](half_horizontal.liquid), [half_vertical.liquid](half_vertical.liquid) and [quadrant.liquid](quadrant.liquid) into the matching layout tabs.
+3. Save the settings.
+
+The title bar icon is served from `https://planetfinder-web-2605.web.app/trmnl-icon.svg` (a copy of [icon.svg](icon.svg) in `public/`), so it needs a hosting deploy.
 
 ## How it Works
 
 1. The TRMNL server polls the URL: `https://<your-app>.web.app/api/trmnl?lat=X&lon=Y`.
-2. The Firebase Cloud Function `trmnl` executes, calculates planet positions and the moon phase for the coordinates `X` and `Y` at the current time, and returns a JSON payload.
+2. The Firebase Cloud Function `trmnl` executes, calculates planet positions, the moon phase and the next sky event (curated planet events, meteor showers, equinoxes and solstices) for the coordinates `X` and `Y` at the current time, and returns a JSON payload. Invalid coordinates fall back to New York and set `coords_error`, which the title bar shows.
 3. The TRMNL rendering engine parses the JSON, binds the values into the Liquid markup template, and requests the SVG image: `https://<your-app>.web.app/api/sky.svg?lat=X&lon=Y` to render the sky map.
 4. The Firebase Cloud Function `sky` generates the vector SVG dynamically, plotting stars, constellations, and visible planets.
 5. The combined screen is compiled and sent to your TRMNL e-paper display!

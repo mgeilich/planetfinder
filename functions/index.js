@@ -1,4 +1,5 @@
 import { onRequest } from "firebase-functions/v2/https";
+import { setGlobalOptions } from "firebase-functions/v2";
 import fs from "fs";
 import path from "path";
 import { fileURLToPath } from "url";
@@ -8,6 +9,143 @@ import { UPCOMING_EVENTS } from "./eventsData.js";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 const dataDir = path.join(__dirname, "data");
+
+// Cap scaling so a bug or abusive traffic can't run up the bill.
+// Each request takes milliseconds, so 5 instances x 80 concurrent requests is ample.
+setGlobalOptions({ maxInstances: 5, concurrency: 80, cpu: 1 });
+
+const DEFAULT_LAT = 40.7128;
+const DEFAULT_LON = -74.0060;
+
+// Parse a coordinate such as "40.7128", "-74.006", "40.7128 N" or "74.006°W".
+// Returns the fallback when the value is empty, and null when it is invalid.
+function parseCoordinate(value, limit, fallback) {
+  if (value === undefined || String(value).trim() === "") return fallback;
+  const match = String(value).trim().match(/^([+-]?\d+(?:\.\d+)?)\s*°?\s*([NSEW])?$/i);
+  if (!match) return null;
+  let coord = parseFloat(match[1]);
+  const hemisphere = (match[2] || "").toUpperCase();
+  if (hemisphere === "S" || hemisphere === "W") coord = -Math.abs(coord);
+  if (Math.abs(coord) > limit) return null;
+  return coord;
+}
+
+function parseLocation(query) {
+  const lat = parseCoordinate(query.lat, 90, DEFAULT_LAT);
+  const lon = parseCoordinate(query.lon, 180, DEFAULT_LON);
+  return {
+    lat: lat ?? DEFAULT_LAT,
+    lon: lon ?? DEFAULT_LON,
+    error: lat === null || lon === null ? "Check latitude/longitude in plugin settings" : null
+  };
+}
+
+// UTC offset (hours) of an IANA time zone such as "America/New_York" at a given instant
+function zoneOffsetHours(zone, date) {
+  const parts = new Intl.DateTimeFormat("en-US", {
+    timeZone: zone, hourCycle: "h23",
+    year: "numeric", month: "numeric", day: "numeric", hour: "numeric", minute: "numeric"
+  }).formatToParts(date);
+  const get = type => parseInt(parts.find(p => p.type === type).value, 10);
+  const asUTC = Date.UTC(get("year"), get("month") - 1, get("day"), get("hour"), get("minute"));
+  return Math.round((asUTC - Math.floor(date.getTime() / 60000) * 60000) / 60000) / 60;
+}
+
+// Time zone from the tz parameter (IANA name or hour offset), else estimated from longitude
+function resolveTzOffset(tz, lon, date) {
+  const value = (tz || "").trim();
+  if (value !== "") {
+    if (/^[+-]?\d+(\.\d+)?$/.test(value)) return parseFloat(value);
+    try {
+      return zoneOffsetHours(value, date);
+    } catch {
+      // Unknown zone name: fall through to the estimate
+    }
+  }
+  let offset = Math.round(lon / 15);
+  // Adjust for US Daylight Saving Time (DST)
+  if (offset >= -8 && offset <= -5 && isUSDST(date)) {
+    offset += 1;
+  }
+  return offset;
+}
+
+const MONTHS = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
+
+// Approximate equinox/solstice instants (Meeus, Astronomical Algorithms ch. 27, mean terms)
+function seasonDates(year) {
+  const y = (year - 2000) / 1000;
+  const jdes = [
+    2451623.80984 + 365242.37404 * y + 0.05169 * y ** 2 - 0.00411 * y ** 3 - 0.00057 * y ** 4,
+    2451716.56767 + 365241.62603 * y + 0.00325 * y ** 2 + 0.00888 * y ** 3 - 0.00030 * y ** 4,
+    2451810.21715 + 365242.01767 * y - 0.11575 * y ** 2 + 0.00337 * y ** 3 + 0.00078 * y ** 4,
+    2451900.05952 + 365242.74049 * y - 0.06223 * y ** 2 - 0.00823 * y ** 3 + 0.00032 * y ** 4
+  ];
+  return jdes.map(jde => new Date((jde - 2440587.5) * 86400000));
+}
+
+// Recurring events (meteor shower peaks, equinoxes, solstices) for a year
+function recurringEvents(year, lat) {
+  const north = lat >= 0;
+  const showers = [
+    [0, 3, "Quadrantid Meteor Shower", "Peak of the Quadrantids, with up to 40 meteors an hour from a dark site. Best after midnight."],
+    [3, 22, "Lyrid Meteor Shower", "Peak of the Lyrids, about 20 meteors an hour. Best in the hours before dawn."],
+    [4, 6, "Eta Aquariid Meteor Shower", "Peak of the Eta Aquariids, debris from Halley's Comet. Best before dawn, especially from the Southern Hemisphere."],
+    [7, 12, "Perseid Meteor Shower", "Peak of the Perseids, up to 60 meteors an hour. Best after midnight from a dark site."],
+    [9, 21, "Orionid Meteor Shower", "Peak of the Orionids, debris from Halley's Comet. Best after midnight."],
+    [10, 17, "Leonid Meteor Shower", "Peak of the Leonids, about 15 meteors an hour. Best before dawn."],
+    [11, 14, "Geminid Meteor Shower", "Peak of the Geminids, the year's richest shower at up to 120 meteors an hour."]
+  ].map(([month, day, title, description]) => ({
+    title, description, dateOnly: true,
+    // Noon UTC keeps the calendar day the same across time zones
+    time: Date.UTC(year, month, day, 12)
+  }));
+
+  const [march, june, september, december] = seasonDates(year);
+  const seasons = [
+    [march, "March Equinox", north ? "spring" : "autumn"],
+    [june, "June Solstice", north ? "summer" : "winter"],
+    [september, "September Equinox", north ? "autumn" : "spring"],
+    [december, "December Solstice", north ? "winter" : "summer"]
+  ].map(([date, title, season]) => ({
+    title, dateOnly: true, time: date.getTime(), useTz: true,
+    description: `The first day of ${season} in the ${north ? "Northern" : "Southern"} Hemisphere.`
+  }));
+
+  return [...showers, ...seasons];
+}
+
+// Next upcoming event: curated planet events from eventsData.js plus recurring ones
+function findNextEvent(date, lat, tzOffset) {
+  const year = date.getUTCFullYear();
+  const curated = UPCOMING_EVENTS.map(ev => {
+    // Curated dates are local wall-clock times with no zone; keep them as written
+    const [d, t] = ev.date.split("T");
+    const [y, m, day] = d.split("-").map(Number);
+    const [hh, mm] = t.split(":").map(Number);
+    return {
+      title: ev.title, description: ev.description,
+      time: Date.UTC(y, m - 1, day, hh, mm) - tzOffset * 3600000,
+      wallClock: { month: m - 1, day, hh, mm }
+    };
+  });
+  const candidates = [...curated, ...recurringEvents(year, lat), ...recurringEvents(year + 1, lat)];
+  const now = date.getTime();
+  const next = candidates
+    .filter(ev => ev.time > now)
+    .sort((a, b) => a.time - b.time)[0];
+  if (!next) return null;
+
+  let dateFormatted;
+  if (next.wallClock) {
+    const { month, day, hh, mm } = next.wallClock;
+    dateFormatted = `${MONTHS[month]} ${day}, ${String(hh).padStart(2, "0")}:${String(mm).padStart(2, "0")}`;
+  } else {
+    const shown = new Date(next.time + (next.useTz ? tzOffset * 3600000 : 0));
+    dateFormatted = `${MONTHS[shown.getUTCMonth()]} ${shown.getUTCDate()}`;
+  }
+  return { title: next.title, date_formatted: dateFormatted, description: next.description };
+}
 
 // Helper to compute Moon Phase and Illumination
 function calculateMoonPhase(date) {
@@ -85,21 +223,12 @@ function isUSDST(date) {
 // GET /api/trmnl
 export const trmnl = onRequest({ cors: true, invoker: "public" }, (req, res) => {
   try {
-    const lat = parseFloat(req.query.lat) || 40.7128;
-    const lon = parseFloat(req.query.lon) || -74.0060;
-    
+    const { lat, lon, error: coordsError } = parseLocation(req.query);
+
     const dateStr = req.query.date || new Date().toISOString();
     const date = new Date(dateStr);
 
-    // Calculate timezone offset (hours) based on longitude or query parameter
-    let tzOffset = parseFloat(req.query.tz);
-    if (isNaN(tzOffset)) {
-      tzOffset = Math.round(lon / 15);
-      // Adjust for US Daylight Saving Time (DST)
-      if (tzOffset >= -8 && tzOffset <= -5 && isUSDST(date)) {
-        tzOffset += 1;
-      }
-    }
+    const tzOffset = resolveTzOffset(req.query.tz, lon, date);
 
     const positions = calculatePlanetPositions(date, lat, lon);
     const moon = calculateMoonPhase(date);
@@ -120,38 +249,12 @@ export const trmnl = onRequest({ cors: true, invoker: "public" }, (req, res) => 
         };
       });
 
-    // Find next upcoming event
-    const nowMs = date.getTime();
-    const upcoming = UPCOMING_EVENTS
-      .filter(ev => new Date(ev.date).getTime() > nowMs)
-      .sort((a, b) => new Date(a.date).getTime() - new Date(b.date).getTime());
-
-    let nextEvent = null;
-    if (upcoming.length > 0) {
-      const ev = upcoming[0];
-      const evDate = new Date(ev.date);
-      
-      // Format event date in the local timezone
-      const evLocalTime = evDate.getTime() + tzOffset * 60 * 60 * 1000;
-      const evLocalDate = new Date(evLocalTime);
-      const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-      const evMonth = months[evLocalDate.getUTCMonth()];
-      const evDay = evLocalDate.getUTCDate();
-      const evHours = String(evLocalDate.getUTCHours()).padStart(2, "0");
-      const evMinutes = String(evLocalDate.getUTCMinutes()).padStart(2, "0");
-      
-      nextEvent = {
-        title: ev.title,
-        date_formatted: `${evMonth} ${evDay}, ${evHours}:${evMinutes}`,
-        description: ev.description
-      };
-    }
+    const nextEvent = findNextEvent(date, lat, tzOffset);
 
     // Format local date/time string for display
     const localTime = date.getTime() + tzOffset * 60 * 60 * 1000;
     const localDate = new Date(localTime);
-    const months = ["Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"];
-    const month = months[localDate.getUTCMonth()];
+    const month = MONTHS[localDate.getUTCMonth()];
     const day = localDate.getUTCDate();
     const hours = String(localDate.getUTCHours()).padStart(2, "0");
     const minutes = String(localDate.getUTCMinutes()).padStart(2, "0");
@@ -165,7 +268,8 @@ export const trmnl = onRequest({ cors: true, invoker: "public" }, (req, res) => 
       moon_phase_emoji: moon.emoji,
       moon_illumination: moon.illumination,
       planets: planetList,
-      next_event: nextEvent
+      next_event: nextEvent,
+      coords_error: coordsError
     });
   } catch (error) {
     console.error("Error in /trmnl API:", error);
@@ -176,8 +280,7 @@ export const trmnl = onRequest({ cors: true, invoker: "public" }, (req, res) => 
 // GET /api/sky.svg
 export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
   try {
-    const lat = parseFloat(req.query.lat) || 40.7128;
-    const lon = parseFloat(req.query.lon) || -74.0060;
+    const { lat, lon } = parseLocation(req.query);
     const dateStr = req.query.date || new Date().toISOString();
     const date = new Date(dateStr);
 
@@ -195,10 +298,20 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
     if (req.query.width || req.query.height) {
       width = parseFloat(req.query.width) || 680;
       height = parseFloat(req.query.height) || 480;
+      // Fit the dome to the frame. With the 22° pitch below, a dome of radius r spans
+      // 2r wide and r above / 0.375r below its center; leave room for labels around it.
+      // Font size depends on r, so iterate a few times to settle both.
+      let top = 0;
+      fontSize = 16;
+      for (let i = 0; i < 3; i++) {
+        const side = fontSize * 0.6;
+        top = fontSize * 1.4;
+        const bottom = fontSize * 1.2;
+        r = Math.min((width - 2 * side) / 2, (height - top - bottom) / 1.375);
+        fontSize = Math.max(16, Math.round(30 * (r / 246)));
+      }
       cx = width / 2;
-      r = Math.min(width * 0.37, height * 0.52);
-      cy = height * 0.78;
-      fontSize = Math.max(16, Math.round(30 * (r / 246)));
+      cy = top + r;
     }
 
     const scaleFactor = fontSize / 30.0;
@@ -394,10 +507,13 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
           let found = false;
           let finalBox = null;
 
+          // Centered labels slide sideways to stay inside the frame near its edges
+          const cx_label = Math.min(Math.max(px, labelWidth / 2 + 4), width - labelWidth / 2 - 4);
+
           // Try 4 directions: Top, Bottom, Right, Left
           const candidates = [
-            { lx: px, ly: py - 18 * scaleFactor, anchor: "middle", box: { x1: px - labelWidth/2, y1: py - 18 * scaleFactor - labelHeight, x2: px + labelWidth/2, y2: py - 18 * scaleFactor } },
-            { lx: px, ly: py + 26 * scaleFactor, anchor: "middle", box: { x1: px - labelWidth/2, y1: py + 26 * scaleFactor, x2: px + labelWidth/2, y2: py + 26 * scaleFactor + labelHeight } },
+            { lx: cx_label, ly: py - 18 * scaleFactor, anchor: "middle", box: { x1: cx_label - labelWidth/2, y1: py - 18 * scaleFactor - labelHeight, x2: cx_label + labelWidth/2, y2: py - 18 * scaleFactor } },
+            { lx: cx_label, ly: py + 26 * scaleFactor, anchor: "middle", box: { x1: cx_label - labelWidth/2, y1: py + 26 * scaleFactor, x2: cx_label + labelWidth/2, y2: py + 26 * scaleFactor + labelHeight } },
             { lx: px + lxOffset, ly: py + lyOffset, anchor: "start", box: { x1: px + lxOffset, y1: py + lyOffset - labelHeight/2, x2: px + lxOffset + labelWidth, y2: py + lyOffset + labelHeight/2 } },
             { lx: px - lxOffset, ly: py + lyOffset, anchor: "end", box: { x1: px - lxOffset - labelWidth, y1: py + lyOffset - labelHeight/2, x2: px - lxOffset, y2: py + lyOffset + labelHeight/2 } }
           ];
@@ -418,18 +534,18 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
           if (!found) {
             let offset = 9 * scaleFactor;
             while (true) {
-              const testBoxUp = { x1: px - labelWidth/2, y1: py - offset - labelHeight, x2: px + labelWidth/2, y2: py - offset };
+              const testBoxUp = { x1: cx_label - labelWidth/2, y1: py - offset - labelHeight, x2: cx_label + labelWidth/2, y2: py - offset };
               if (!checkOverlap(testBoxUp)) {
-                lx = px;
+                lx = cx_label;
                 ly = py - offset;
                 anchor = "middle";
                 obstacles.push(testBoxUp);
                 finalBox = testBoxUp;
                 break;
               }
-              const testBoxDown = { x1: px - labelWidth/2, y1: py + offset, x2: px + labelWidth/2, y2: py + offset + labelHeight };
+              const testBoxDown = { x1: cx_label - labelWidth/2, y1: py + offset, x2: cx_label + labelWidth/2, y2: py + offset + labelHeight };
               if (!checkOverlap(testBoxDown)) {
-                lx = px;
+                lx = cx_label;
                 ly = py + offset + labelHeight * 0.8;
                 anchor = "middle";
                 obstacles.push(testBoxDown);
@@ -438,7 +554,7 @@ export const sky = onRequest({ cors: true, invoker: "public" }, (req, res) => {
               }
               offset += 12 * scaleFactor;
               if (offset > 120 * scaleFactor) { // Safety limit
-                lx = px;
+                lx = cx_label;
                 ly = py - 9 * scaleFactor;
                 anchor = "middle";
                 finalBox = candidates[0].box;
