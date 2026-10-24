@@ -1,5 +1,5 @@
 import React, { useMemo, useRef } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
+import { Canvas, useFrame, useThree } from '@react-three/fiber';
 import { OrbitControls, Stars, Text, useTexture, Billboard } from '@react-three/drei';
 
 const getImageSrc = (planet) => {
@@ -111,6 +111,20 @@ function CelestialSphereGroup({ planetData }) {
   );
 }
 
+function ViewCamera({ viewType }) {
+  const { camera } = useThree();
+  React.useEffect(() => {
+    if (viewType === '3D-SolarSystem') {
+      camera.position.set(0, 10, 20);
+    } else {
+      camera.position.set(0, 0, 35);
+    }
+    camera.lookAt(0, 0, 0);
+    camera.updateProjectionMatrix();
+  }, [viewType, camera]);
+  return null;
+}
+
 export default function ThreeDView({ planetData, viewType }) {
   if (!planetData || Object.keys(planetData).length === 0) return null;
   
@@ -123,6 +137,7 @@ export default function ThreeDView({ planetData, viewType }) {
         <color attach="background" args={['#050510']} />
         <Stars radius={100} depth={50} count={5000} factor={4} saturation={0} fade speed={1} />
         
+        <ViewCamera viewType={viewType} />
         <OrbitControls makeDefault />
         
         {viewType === '3D-SolarSystem' ? (

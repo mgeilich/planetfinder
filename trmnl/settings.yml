@@ -1,0 +1,40 @@
+---
+strategy: polling
+no_screen_padding: 'yes'
+dark_mode: 'no'
+static_data: ''
+polling_verb: get
+framework_version: 3.1.1
+serverless_language: ''
+polling_url: https://planetfinder-web-2605.web.app/api/trmnl?lat={{lat}}&lon={{lon}}&tz={{tz}}
+polling_headers: ''
+polling_body: ''
+id: 348470
+custom_fields:
+- keyname: lat
+  field_type: text
+  name: Latitude
+  default_value: '40.7128'
+  description: 'Enter your latitude.'
+  help_text: '<a href="https://www.findlatitudeandlongitude.com/">findlatitudeandlongitude.com</a>'
+- keyname: lon
+  field_type: text
+  name: Longitude
+  default_value: '-74.0060'
+  description: 'Enter your longitude.'
+  help_text: '<a href="https://www.findlatitudeandlongitude.com/">findlatitudeandlongitude.com</a>'
+- keyname: tz
+  field_type: text
+  name: Time Zone
+  optional: true
+  placeholder: 'America/New_York'
+  description: 'Optional. Your time zone name, such as America/New_York or Europe/London. If blank, it is estimated from your longitude.'
+  help_text: '<a href="https://en.wikipedia.org/wiki/List_of_tz_database_time_zones">List of time zone names</a>'
+- keyname: author_bio
+  field_type: author_bio
+  name: Support & Author Bio
+  description: 'Planet Finder displays a real-time planisphere/sky map.<br>Created by Michael Geilich. Please report any issues on GitHub.'
+  github_url: https://github.com/mgeilich/planetfinder
+  category: discovery,education
+name: Planet Finder
+refresh_interval: 60

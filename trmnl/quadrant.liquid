@@ -1,24 +1,29 @@
-<div class="view layout padding--none bg--white">
-  <div class="flex flex--row w--full h--full lg:flex--row">
+<div class="layout">
+  <div class="grid grid--cols-2 portrait:grid--cols-1 h--full w--full">
     <!-- Left Panel: Sky Map -->
-    <div class="flex flex--col justify--center items--center w--[160px] h--[240px] lg:w--[160px]">
-      <img src="https://planetfinder-web-2605.web.app/api/sky.svg?lat={{ latitude }}&lon={{ longitude }}&v=12" 
-           class="image image-dither w--[160px] h--[160px] lg:w--[160px] lg:h--[160px]" />
+    <div class="flex flex--col flex--center-x flex--center-y">
+      <!-- Map sized to the OG and TRMNL X boxes; lazy loading skips the hidden one -->
+      <img src="https://planetfinder-web-2605.web.app/api/sky.svg?lat={{ latitude }}&lon={{ longitude }}&width=200&height=200" loading="lazy"
+           class="image image--contain lg:hidden" />
+      <img src="https://planetfinder-web-2605.web.app/api/sky.svg?lat={{ latitude }}&lon={{ longitude }}&width=200&height=270" loading="lazy"
+           class="image image--contain hidden lg:visible" />
     </div>
     <!-- Right Panel: Info -->
-    <div class="flex flex--col justify--center gap--2 w--[240px] h--[240px] pt--2 pb--2 pl--2 pr--2 border--left lg:pl--2">
-      <div class="flex flex--row items--center gap--2">
-        <span class="value--large">{{ moon_phase_emoji }}</span>
-        <div class="flex flex--col justify--center">
-          <span class="text--xsmall text--bold">{{ moon_phase }}</span>
-          <span class="text--xxsmall label text--black">{{ moon_illumination }}% lit</span>
+    <div class="flex flex--col flex--center-x gap--small lg:gap--medium p--2 lg:p--4">
+      <div class="flex flex--row flex--center-y gap--small lg:gap--medium">
+        <span class="value--large lg:value--xxlarge">{{ moon_phase_emoji }}</span>
+        <div class="flex flex--col flex--center-x">
+          <span class="text--small lg:text--base font--bold">{{ moon_phase }}</span>
+          <span class="text--small label text--black">{{ moon_illumination }}% lit</span>
         </div>
       </div>
-      <div class="flex flex--col gap--1">
-        <span class="text--xsmall label text--bold text--black">COORDINATES & TIME</span>
-        <span class="text--xsmall text--bold">{{ latitude }}, {{ longitude }}</span>
-        <span class="text--xsmall text--bold">{{ last_updated }}</span>
+      <div class="flex flex--col gap--xsmall lg:gap--small mt--1 lg:mt--2">
+        <span class="text--small label font--bold text--black">COORDINATES & TIME</span>
+        <span class="text--small lg:text--base font--bold">{{ latitude }}, {{ longitude }}</span>
+        <span class="text--small lg:text--base font--bold">{{ last_updated }}</span>
       </div>
     </div>
   </div>
 </div>
+
+{% render "title_bar", coords_error: coords_error, instance: trmnl.plugin_settings.instance_name %}

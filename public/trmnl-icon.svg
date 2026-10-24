@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512">
+  <rect x="16" y="16" width="480" height="480" rx="96" fill="white" stroke="black" stroke-width="24"/>
+  <!-- Telescope Tube -->
+  <path d="M160 360 L360 160" stroke="black" stroke-width="40" stroke-linecap="round"/>
+  <!-- Finder scope -->
+  <path d="M210 260 L280 190" stroke="black" stroke-width="16" stroke-linecap="round"/>
+  <path d="M220 280 L200 250" stroke="black" stroke-width="8"/>
+  <path d="M270 230 L250 200" stroke="black" stroke-width="8"/>
+  <!-- Tripod Mount -->
+  <circle cx="230" cy="290" r="24" fill="black"/>
+  <!-- Tripod Legs -->
+  <path d="M230 290 L160 440" stroke="black" stroke-width="24" stroke-linecap="round"/>
+  <path d="M230 290 L300 440" stroke="black" stroke-width="24" stroke-linecap="round"/>
+  <path d="M230 290 L230 440" stroke="black" stroke-width="24" stroke-linecap="round"/>
+  <!-- Crescent Moon -->
+  <path d="M360 80 A 60 60 0 0 1 420 140 A 48 48 0 0 0 360 80" fill="black"/>
+  <!-- Stars -->
+  <path d="M300 120 L305 135 L320 135 L308 145 L312 160 L300 150 L288 160 L292 145 L280 135 L295 135 Z" fill="black"/>
+  <path d="M410 220 L413 228 L422 228 L415 233 L417 241 L410 236 L403 241 L405 233 L398 228 L407 228 Z" fill="black"/>
+</svg>

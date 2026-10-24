@@ -1,91 +1,89 @@
-<div class="view layout padding--none bg--white">
-  <div class="flex flex--row portrait:flex--col w--full h--full">
-    <!-- Panel 1: Sky Map (680px wide, overlaps into altitude column) -->
-    <div class="flex flex--col justify--center w--[680px] h--[480px] portrait:w--full portrait:h--[240px]" style="margin-right: -140px;">
-      <img src="https://planetfinder-web-2605.web.app/api/sky.svg?lat={{ latitude }}&lon={{ longitude }}&v=36" 
-           class="image image-dither w--[680px] h--[480px] portrait:w--[240px] portrait:h--[240px]"
-           style="display: block;" />
-    </div>
+<div class="layout">
+  <div class="grid grid--cols-2 portrait:grid--cols-1">
+    <!-- Column 1: Sky Map (Top) & Altitude/Heading (Bottom) -->
+    <div class="flex flex--col">
+      <!-- Sky Map -->
+      <!-- Map sized to the OG and TRMNL X boxes; lazy loading skips the hidden one -->
+      <img src="https://planetfinder-web-2605.web.app/api/sky.svg?lat={{ latitude }}&lon={{ longitude }}&width=400&height=230" loading="lazy"
+           class="image block mt--5 lg:mt--8 lg:hidden" />
+      <img src="https://planetfinder-web-2605.web.app/api/sky.svg?lat={{ latitude }}&lon={{ longitude }}&width=400&height=330" loading="lazy"
+           class="image mt--5 lg:mt--8 hidden lg:visible" />
 
-    <!-- Panel 2: Altitude Panel (130px wide, transparent overlay, vertically centered) -->
-    <div class="w--[130px] h--[480px] pl--2 pr--2 border--left portrait:border--top portrait:w--full portrait:h--auto" style="position: relative;">
-      <table style="width: 100%; height: 100%; border-collapse: collapse;">
-        <tbody>
-          <tr>
-            <td style="vertical-align: middle; padding: 0;">
-              <table style="width: 100%; border-collapse: collapse;">
-                <thead>
-                  <tr>
-                    <td style="width: 22px; border: none;"></td>
-                    <th colspan="2" class="text--base text--bold text--black" style="text-align: center; border: none; padding-bottom: 8px;">ALTITUDE</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {% for planet in planets %}
-                    {% if planet.visible %}
-                      <tr class="border--bottom" style="height: 32px;">
-                        <td style="width: 22px; border: none;"></td>
-                        <td class="text--center text--base text--bold text--black" style="text-align: center; border: none; vertical-align: middle;">{{ planet.name }}</td>
-                        <td class="text--right text--base text--bold text--black" style="width: 45px; text-align: right; border: none; vertical-align: middle;">{{ planet.altitude_formatted }}</td>
-                      </tr>
-                    {% endif %}
-                  {% endfor %}
-                </tbody>
-              </table>
-            </td>
-          </tr>
-        </tbody>
-      </table>
-    </div>
-
-    <!-- Panel 3: Info Panel (130px wide, vertically centered) -->
-    <div class="w--[130px] h--[480px] border--left portrait:border--top portrait:w--full portrait:h--auto">
-      <table style="width: 100%; height: 100%; border-collapse: collapse;">
-        <tbody>
-          <tr>
-            <td style="vertical-align: middle; padding: 8px;">
-              <div class="flex flex--col gap--3 w--full">
-                <div class="flex flex--col gap--1 pb--2 w--full border--bottom text--xsmall">
-                  <div class="flex flex--row justify--between items--center">
-                    <span class="text--bold text--black">Lat</span>
-                    <span class="text--bold">{{ latitude }}</span>
-                  </div>
-                  <div class="flex flex--row justify--between items--center">
-                    <span class="text--bold text--black">Lon</span>
-                    <span class="text--bold">{{ longitude }}</span>
-                  </div>
-                  <div class="flex flex--col gap--0 mt--1">
-                    <span class="text--bold text--black">Time</span>
-                    <span class="text--bold text--black mt--1">{{ last_updated }}</span>
-                  </div>
+      <div class="divider"></div>
+      <!-- Altitude / Heading -->
+      <div class="pl--4 pr--4 pt--2 lg:pt--4">
+        <div class="grid grid--cols-2 gap--medium lg:gap--large w--full">
+          {% for planet in planets %}
+            {% if planet.visible %}
+              <div class="flex flex--row flex--center-y px--1 py--1">
+                <!-- Column 1: Planet Name -->
+                <div class="text--base lg:text--large font--bold text--black grow text--left">
+                  {{ planet.name }}
                 </div>
-                <div class="bg--white rounded border flex flex--col gap--1 w--full pt--1 pb--1 pl--2 pr--2">
-                  <span class="text--xxsmall label text--bold text--black">MOON PHASE</span>
-                  <div class="flex flex--row items--center gap--2 mt--1">
-                    <span class="value--large">{{ moon_phase_emoji }}</span>
-                    <div class="flex flex--col justify--center">
-                      <span class="text--xxsmall text--bold text--black">{{ moon_phase }}</span>
-                      <span class="text--xxsmall label text--black">{{ moon_illumination }}% lit</span>
-                    </div>
-                  </div>
+                
+                <!-- Column 2: Altitude -->
+                <div class="text--base lg:text--large font--bold text--black grow text--left">
+                  {{ planet.altitude_formatted }}
                 </div>
-                <div class="bg--white rounded border flex flex--col gap--1 w--full pt--1 pb--1 pl--2 pr--2">
-                  <span class="text--xxsmall label text--bold text--black">UPCOMING EVENT</span>
-                  {% if next_event.title %}
-                    <div class="flex flex--col gap--0">
-                      <span class="text--xxsmall text--bold text--black">{{ next_event.title }}</span>
-                      <span class="text--xxsmall label text--black mb--1">{{ next_event.date_formatted }}</span>
-                      <span class="text--xxsmall text--black" style="line-height: 1.2;">{{ next_event.description }}</span>
-                    </div>
-                  {% else %}
-                    <span class="text--xxsmall label text--black">No events soon</span>
-                  {% endif %}
+                
+                <!-- Column 3: Heading -->
+                <div class="text--base lg:text--large font--bold text--black grow text--right">
+                  {{ planet.compass_direction }}
                 </div>
               </div>
-            </td>
-          </tr>
-        </tbody>
-      </table>
+            {% endif %}
+          {% endfor %}
+        </div>
+      </div>
+    </div>
+    
+    <div class="hidden portrait:visible divider"></div>
+    
+    <!-- Panel 3: Info Panel -->
+    <div class="flex flex--col flex--center-x p--2 lg:p--4">
+      <div class="flex flex--col gap--small lg:gap--medium w--full">
+        <div class="flex flex--col gap--xsmall lg:gap--small pb--2 lg:pb--4 w--full text--small lg:text--base">
+          <div class="flex flex--row flex--between flex--center-y">
+            <span class="font--bold text--black">Lat</span>
+            <span class="font--bold">{{ latitude }}</span>
+          </div>
+          <div class="flex flex--row flex--between flex--center-y">
+            <span class="font--bold text--black">Lon</span>
+            <span class="font--bold">{{ longitude }}</span>
+          </div>
+          <div class="flex flex--col gap--none mt--1 lg:mt--2">
+            <span class="font--bold text--black">Time</span>
+            <span class="font--bold text--black mt--1">{{ last_updated }}</span>
+          </div>
+          <div class="divider mt--1 lg:mt--2"></div>
+        </div>
+        
+        <div class="bg--white rounded outline flex flex--col gap--xsmall lg:gap--small w--full pt--1 lg:pt--3 pb--1 lg:pb--3 pl--2 lg:pl--4 pr--2 lg:pr--4">
+          <span class="text--small label font--bold text--black">MOON PHASE</span>
+          <div class="flex flex--row flex--center-y gap--small lg:gap--medium mt--1">
+            <span class="value--large lg:value--xxlarge">{{ moon_phase_emoji }}</span>
+            <div class="flex flex--col flex--center-x">
+              <span class="text--small font--bold text--black">{{ moon_phase }}</span>
+              <span class="text--small label text--black">{{ moon_illumination }}% lit</span>
+            </div>
+          </div>
+        </div>
+        
+        <div class="bg--white rounded outline flex flex--col gap--xsmall lg:gap--small w--full pt--1 lg:pt--3 pb--1 lg:pb--3 pl--2 lg:pl--4 pr--2 lg:pr--4">
+          <span class="text--small label font--bold text--black">UPCOMING EVENT</span>
+          {% if next_event.title %}
+            <div class="flex flex--col gap--none">
+              <span class="text--xlarge lg:text--xxlarge font--bold text--black">{{ next_event.title }}</span>
+              <span class="text--base lg:text--xlarge label text--black mb--1 lg:mb--2">{{ next_event.date_formatted }}</span>
+              <span class="text--base lg:text--large text--black">{{ next_event.description }}</span>
+            </div>
+          {% else %}
+            <span class="text--small label text--black">No events soon</span>
+          {% endif %}
+        </div>
+      </div>
     </div>
   </div>
 </div>
+
+{% render "title_bar", coords_error: coords_error, instance: trmnl.plugin_settings.instance_name %}
